@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "A small program that analyses a given RDF graph and indicates whether things have labels of various sorts or not"
 authors = ["Nicholas Car <nick@kurrawong.ai>"]
 license = "BSD 3-Clause"
-readme = "README.md"
+readme = "README.adoc"
 
 [tool.poetry.dependencies]
 python = "^3.9"
@@ -18,3 +18,6 @@ pytest = "^7.3.1"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+labelify = 'labelify.cli:main'
