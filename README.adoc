@@ -39,7 +39,7 @@ options:
 
 == License
 
-BSB 3-clause, if anyone is asking.
+https://opensource.org/license/bsd-3-clause/[BSD-3-Clause], if anyone is asking.
 
 == Development
 
