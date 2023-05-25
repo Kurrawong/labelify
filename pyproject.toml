@@ -9,6 +9,7 @@ readme = "README.adoc"
 [tool.poetry.dependencies]
 python = "^3.9"
 rdflib = "^6.3.2"
+ruff = "^0.0.270"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -21,3 +22,9 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 labelify = 'labelify.cli:main'
+
+[tool.ruff]
+select = [
+    "I001",
+    "I002"
+]
