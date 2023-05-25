@@ -16,9 +16,7 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "input",
-        help="Input RDF file to extract labels from",
-        type=file_path
+        "input", help="Input RDF file to extract labels from", type=file_path
     )
 
     return parser.parse_args()
@@ -30,7 +28,9 @@ if __name__ == "__main__":
     g = Graph().parse(input_file_path)
 
     g2 = Graph()
-    for s, o in g.subject_objects(RDFS.label | SKOS.prefLabel | SDO.name | DCTERMS.title):
+    for s, o in g.subject_objects(
+        RDFS.label | SKOS.prefLabel | SDO.name | DCTERMS.title
+    ):
         g2.add((s, RDFS.label, o))
 
     parts = os.path.splitext(str(input_file_path))
