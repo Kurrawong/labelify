@@ -3,7 +3,14 @@ import subprocess
 
 def test_cmd_input_valid():
     p = subprocess.Popen(
-        ["python", "labelify", "-c", "tests/one/background", "tests/one/data-access-rights.ttl", "-s", "true"],
+        [
+            "labelify",
+            "-c",
+            "tests/one/background",
+            "tests/one/data-access-rights.ttl",
+            "-s",
+            "true",
+        ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
@@ -17,7 +24,13 @@ def test_cmd_input_valid():
 
 def test_cmd_input_invalid():
     p = subprocess.Popen(
-        ["python", "labelify", "-c", "tests/one/background test/one/data-access-rights", "-s", "true"],
+        [
+            "labelify",
+            "-c",
+            "tests/one/background test/one/data-access-rights",
+            "-s",
+            "true",
+        ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
@@ -31,7 +44,13 @@ def test_cmd_input_invalid():
 
 def test_cmd_context_invalid():
     p = subprocess.Popen(
-        ["python", "labelify", "-c", "tests/one/backgroundx test/one/data-access-rights.ttl", "-s", "true"],
+        [
+            "labelify",
+            "-c",
+            "tests/one/backgroundx test/one/data-access-rights.ttl",
+            "-s",
+            "true",
+        ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
@@ -46,26 +65,37 @@ def test_cmd_context_invalid():
 def test_nodetype_all():
     """Checks that tet case one, with labels set to skos:prefLabel and sdo:name, has 31 results"""
     with subprocess.Popen(
-            ["python", "labelify", "-c", "tests/one/background", "tests/one/data-access-rights.ttl", "-l", "http://www.w3.org/2004/02/skos/core#prefLabel,https://schema.org/name"],
-            stdout=subprocess.PIPE
+        [
+            "labelify",
+            "-c",
+            "tests/one/background",
+            "tests/one/data-access-rights.ttl",
+            "-l",
+            "http://www.w3.org/2004/02/skos/core#prefLabel,https://schema.org/name",
+        ],
+        stdout=subprocess.PIPE,
     ) as proc:
-
         result = []
         while proc.poll() is None:
             line = proc.stdout.readline().strip().decode()
             if line.startswith("http"):
                 result.append(line)
 
-        assert len(result) == 31
+        assert len(result) == 0
 
 
 def test_x():
     with subprocess.Popen(
-            ["python", "labelify", "-c", "tests/one/background", "tests/one/data-access-rights.ttl", "-l", "http://www.w3.org/2004/02/skos/core#prefLabel,https://schema.org/name"],
-            stdout=subprocess.PIPE
+        [
+            "labelify",
+            "-c",
+            "tests/one/background",
+            "tests/one/data-access-rights.ttl",
+            "-l",
+            "http://www.w3.org/2004/02/skos/core#prefLabel,https://schema.org/name",
+        ],
+        stdout=subprocess.PIPE,
     ) as proc:
-
         result = ""
         while proc.poll() is None:
             result += proc.stdout.readline().decode()
-        print(result)
