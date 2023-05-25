@@ -1,18 +1,17 @@
+import argparse
+import os
 import sys
 from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).absolute().parent.parent))
-from labelify import __version__
-import os
-import argparse
-from rdflib import Graph, URIRef
-from rdflib.paths import Path as PredicatePath
-from rdflib.paths import AlternativePath
-from rdflib.namespace import RDFS, SDO, SKOS
-from itertools import chain
-from labelify.utils import list_of_predicates_to_alternates
 from typing import Literal as TLiteral
 from typing import Optional
+
+from rdflib import Graph, URIRef
+from rdflib.namespace import RDFS
+
+from labelify import __version__
+from labelify.utils import list_of_predicates_to_alternates
+
+sys.path.insert(0, str(Path(__file__).absolute().parent.parent))
 
 
 def get_labelling_predicates(l_arg):

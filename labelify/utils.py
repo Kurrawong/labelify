@@ -1,5 +1,6 @@
 import pickle
 from pathlib import Path
+
 from rdflib import Graph, URIRef
 
 
