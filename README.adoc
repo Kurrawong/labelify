@@ -5,6 +5,11 @@ labelify is a small Python command line application that analyses a given RDF gr
 Example use:
 
 [source,shell]
+---
+pip install git+https://github.com/Kurrawong/labelify
+---
+
+[source,shell]
 ----
 labelify qldgeofeatures.ttl -c qldgeofeatures-dataset/background-onts -l https://schema.org/name,http://www.w3.org/2004/02/skos/core\#
 ----
