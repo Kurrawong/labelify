@@ -6,12 +6,11 @@ from typing import Literal as TLiteral
 from typing import Optional
 
 from rdflib import Graph, URIRef
-from rdflib.namespace import RDFS
+from rdflib.namespace import DCTERMS, RDFS, SDO, SKOS
 
-from labelify import __version__
 from labelify.utils import list_of_predicates_to_alternates
 
-sys.path.insert(0, str(Path(__file__).absolute().parent.parent))
+__version__ = "0.0.0"
 
 
 def get_labelling_predicates(l_arg):
@@ -36,10 +35,15 @@ def call_method(o, name):
     return getattr(o, name)()
 
 
-def get_nodes_missing_labels(
-    labelling_predicates: list[URIRef],
+def get_missing_labels(
     graph: Graph,
     context_graph: Optional[Graph] = None,
+    labelling_predicates: list[URIRef] = [
+        DCTERMS.title,
+        RDFS.label,
+        SDO.name,
+        SKOS.prefLabel,
+    ],
     node_type: TLiteral["subjects", "predicates", "objects", "all"] = "all",
     evaluate_context_nodes: bool = False,
 ):
@@ -47,6 +51,7 @@ def get_nodes_missing_labels(
 
     :param graph: the graph to look for nodes in
     :param context_graph: the additional context to search in for labels
+    :param labelling_predicates: the IRIs of the label predicates to look for. Default is rdfs:label
     :param node_type: S, P, O or all of them
     :param evaluate_context_nodes: whether (True) or not (False) to include Ss, Ps, & Os or all of the nodes in the
     context_graph when looking for nodes missing labels
@@ -70,24 +75,24 @@ def get_nodes_missing_labels(
         target_graph = graph
 
     if node_type == "all":
-        s = get_nodes_missing_labels(
-            labelling_predicates,
+        s = get_missing_labels(
             graph,
             context_graph,
+            labelling_predicates,
             "subjects",
             evaluate_context_nodes,
         )
-        p = get_nodes_missing_labels(
-            labelling_predicates,
+        p = get_missing_labels(
             graph,
             context_graph,
+            labelling_predicates,
             "predicates",
             evaluate_context_nodes,
         )
-        o = get_nodes_missing_labels(
-            labelling_predicates,
+        o = get_missing_labels(
             graph,
             context_graph,
+            labelling_predicates,
             "objects",
             evaluate_context_nodes,
         )
@@ -110,7 +115,10 @@ def get_nodes_missing_labels(
     return nodes
 
 
-def get_args():
+def cli(args=None):
+    if args is None:  # vocexcel run via entrypoint
+        args = sys.argv[1:]
+
     def file_path(path):
         if os.path.isfile(path):
             return path
@@ -180,11 +188,7 @@ def get_args():
         default="false",
     )
 
-    return parser.parse_args()
-
-
-def main():
-    args = get_args()
+    args = parser.parse_args(args)
 
     g = Graph().parse(args.input)
     cg = None
@@ -207,10 +211,10 @@ def main():
 
     labelling_predicates = get_labelling_predicates(args.labels)
 
-    nml = get_nodes_missing_labels(
-        labelling_predicates,
+    nml = get_missing_labels(
         g,
         cg,
+        labelling_predicates,
         args.nodetype,
         True if args.evaluate == "true" else False,
     )
@@ -220,4 +224,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    retval = cli(sys.argv[1:])
+    if retval is not None:
+        sys.exit(retval)

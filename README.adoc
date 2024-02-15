@@ -1,18 +1,42 @@
 = labelify
 
-labelify is a small Python command line application that analyses a given RDF graph (a file) and prints a list of subject, predicated and or objects IRIs that don't have labels.
+labelify is a small Python command line application that analyses a given RDF graph (a file) and prints a list of IRIs for subjects and/or predicates and/or objects that don't have labels.
 
-Example use:
+Example command line use:
 
 [source,shell]
 ----
-labelify qldgeofeatures.ttl -c qldgeofeatures-dataset/background-onts -l https://schema.org/name,http://www.w3.org/2004/02/skos/core\#
+labelify tests/one/data-access-rights.ttl -c tests/one/background -l https://schema.org/name,http://www.w3.org/2004/02/skos/core\#
 ----
 
-The above call analyses qldgeofeatures.ttl for labels for all s, p & o and looks within the RDF files in qldgeofeatures-dataset/background-onts to find them. It treats `sdo:name` and `skos:prefLabel` as labels as well as the default `rdfs:label`
+The above call analyses data-access-rights.ttl in the tests folder of this repository for labels for all s, p & o and looks within the RDF files in tests/one/background to find them. It treats the `skos:prefLabel` predicate as indicating labels as well as the default `rdfs:label`
 
+Example Python script use:
 
-Full usage documentation:
+[source,python]
+----
+from labelify import get_missing_labels
+from rdflib import Graph
+from rdflib.namespace import RDFS, SKOS
+import glob
+
+g = Graph().parse("tests/one/data-access-rights.ttl")
+cg = Graph()
+for c in glob.glob("tests/one/background/*.ttl"):
+    cg.parse(c)
+
+missing = get_missing_labels(
+    g,
+    cg,
+    [SKOS.prefLabel, RDFS.label],
+    "objects"
+)
+print(missing)
+----
+
+As per the command line script further above, this use within a Python script looks for missing labels within the RDF file tests/one/data-access-rights.ttl, supplying any that it can from tests/one/background/ and treating `skos:prefLabel` and `rdfs:label` as labelling predicates.
+
+Full command line usage documentation:
 
 [source,shell]
 ----
@@ -36,6 +60,12 @@ options:
   -e {true,false}, --evaluate {true,false}
                         Evaluate nodes in the context graphs for labels
 ----
+
+== Installation
+
+This tool uses Python's https://python-poetry.org/[Poetry] dependency manager so you can load the necissary dependencies into a Python virtual environment by running `python poetry install` in the root directory of this repository.
+
+After that, the `labelify` command line tool will work, on Linux/Mac.
 
 == License
 

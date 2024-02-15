@@ -21,7 +21,7 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-labelify = 'labelify.cli:main'
+labelify = 'labelify:cli'
 
 [tool.ruff]
 select = [
