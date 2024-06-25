@@ -1,14 +1,19 @@
 import argparse
 import os
 import sys
+from getpass import getpass
 from pathlib import Path
 from typing import Literal as TLiteral
 from typing import Optional
+from urllib.error import URLError
+from urllib.parse import ParseResult, urlparse, urlunparse
 
 from rdflib import Graph, URIRef
 from rdflib.namespace import DCTERMS, RDFS, SDO, SKOS
+from SPARQLWrapper import JSONLD, SPARQLWrapper
+from SPARQLWrapper.SPARQLExceptions import EndPointNotFound
 
-from labelify.utils import list_of_predicates_to_alternates
+from labelify.utils import get_namespace, list_of_predicates_to_alternates
 
 __version__ = "0.0.0"
 
@@ -46,7 +51,7 @@ def get_missing_labels(
     ],
     node_type: TLiteral["subjects", "predicates", "objects", "all"] = "all",
     evaluate_context_nodes: bool = False,
-):
+) -> set[URIRef]:
     """Gets all the nodes missing labels
 
     :param graph: the graph to look for nodes in
@@ -119,23 +124,18 @@ def cli(args=None):
     if args is None:  # vocexcel run via entrypoint
         args = sys.argv[1:]
 
-    def file_path(path):
-        if os.path.isfile(path):
+    def url_file_or_folder(input: str) -> ParseResult | Path:
+        parsed = urlparse(input)
+        if all([parsed.scheme, parsed.netloc, parsed.path.endswith("sparql")]):
+            return parsed
+        path = Path(input)
+        if path.is_file():
             return path
-        else:
-            raise argparse.ArgumentTypeError(f"{path} is not a valid file")
-
-    def dir_path(path):
-        if os.path.isdir(path):
+        if path.is_dir():
             return path
-        else:
-            raise argparse.ArgumentTypeError(f"{path} is not a valid directory")
-
-    def file_or_dir_path(path):
-        if os.path.isfile(path) or os.path.isdir(path):
-            return path
-        else:
-            raise argparse.ArgumentTypeError(f"{path} is not a file or a directory")
+        raise argparse.ArgumentTypeError(
+            f"{input} is not a valid input. Must be a file, folder or sparql endpoint"
+        )
 
     parser = argparse.ArgumentParser()
 
@@ -146,13 +146,17 @@ def cli(args=None):
         version="{version}".format(version=__version__),
     )
 
-    parser.add_argument("input", help="Input RDF file being analysed", type=file_path)
+    parser.add_argument(
+        "input",
+        help="File, Folder or Sparql Endpoint to read RDF from",
+        type=url_file_or_folder,
+    )
 
     parser.add_argument(
         "-c",
         "--context",
-        help="A folder path containing RDF files or a single RDF file path to the ontology(ies) containing labels for the input",
-        type=file_or_dir_path,
+        help="labels for the input, can be a File, Folder, or SPARQL endpoint.",
+        type=url_file_or_folder,
     )
 
     parser.add_argument(
@@ -188,9 +192,98 @@ def cli(args=None):
         default="false",
     )
 
+    parser.add_argument(
+        "-u",
+        "--username",
+        type=str,
+        default=None,
+        dest="username",
+        help="sparql username",
+        required=False,
+    )
+
+    parser.add_argument(
+        "-p",
+        "--password",
+        type=str,
+        default=None,
+        dest="password",
+        help="sparql password",
+        required=False,
+    )
+
+    parser.add_argument(
+        "-g",
+        "--graph",
+        type=str,
+        default=None,
+        dest="graph",
+        help="named graph to query (only used if input is a sparql endpoint)",
+        required=False,
+    )
+
+    parser.add_argument(
+        "-r",
+        "--raw",
+        dest="raw",
+        action="store_true",
+        help="Only output the nodes with missing labels. one per line",
+    )
+
     args = parser.parse_args(args)
 
-    g = Graph().parse(args.input)
+    if isinstance(args.input, ParseResult):
+        g = Graph()
+        offset = 0
+        batch_size = 50000
+        n_results = batch_size
+        url = urlunparse(args.input)
+        if not args.raw:
+            print(
+                f"Loading triples from {url}, using graph: {'default' if not args.graph else args.graph}"
+            )
+            print(f"\tbatch_size: {batch_size}")
+        while n_results == batch_size:
+            sparql = SPARQLWrapper(endpoint=url, defaultGraph=args.graph)
+            sparql.setQuery(
+                """
+            construct {{
+                ?s ?p ?o .
+            }}
+            where {{
+                ?s ?p ?o .
+            }}
+            order by ?s
+            limit {}
+            offset {}
+            """.format(
+                    batch_size, offset
+                )
+            )
+            if args.username and not args.password:
+                sparql.setCredentials(user=args.username, passwd=getpass("password:"))
+            try:
+                g_part = sparql.queryAndConvert()
+                n_results = len(g_part)
+                offset += batch_size
+            except (EndPointNotFound, URLError) as e:
+                print(e)
+                exit(1)
+            g += g_part
+            if not args.raw:
+                print(
+                    f"\tfetched: {len(g):,}",
+                    end="\r" if n_results == batch_size else "\n\n",
+                    flush=True,
+                )
+
+    elif args.input.is_dir():
+        g = Graph()
+        for file in args.input.glob("*.ttl"):
+            g.parse(file)
+    else:
+        g = Graph().parse(args.input)
+
     cg = None
 
     if args.supress == "true":
@@ -198,18 +291,30 @@ def cli(args=None):
 
     if args.context is not None:
         cg = Graph()
-        print("Loading given context")
-        if Path(args.context).is_file():
-            print(f"Loading {args.context}")
+        if not args.raw:
+            print("Loading given context")
+        if args.context.is_file():
+            if not args.raw:
+                print(f"Loading {args.context}")
             cg.parse(args.context)
-        if Path(args.context).is_dir():
-            for f in Path(args.context).glob("*.ttl"):
-                print(f"Loading {f}")
+        if args.context.is_dir():
+            for f in args.context.glob("*.ttl"):
+                if not args.raw:
+                    print(f"Loading {f}")
                 cg.parse(f)
+        if not args.raw:
+            print("\n")
     else:
-        print("No additional context supplied")
+        if not args.raw:
+            print("No additional context supplied\n")
 
     labelling_predicates = get_labelling_predicates(args.labels)
+    if not args.raw:
+        print(f"Using labelling predicates:")
+        for label in labelling_predicates:
+            print("\t" + label)
+        print("\n")
+        print("".center(80, "="), end="\n\n")
 
     nml = get_missing_labels(
         g,
@@ -218,9 +323,22 @@ def cli(args=None):
         args.nodetype,
         True if args.evaluate == "true" else False,
     )
-    print(f"{str(args.nodetype).title()} missing labels ({len(nml)}):")
-    for x in nml:
-        print(x)
+    if args.raw:
+        for uri in nml:
+            print(uri)
+    else:
+        namespace: dict = {}
+        for uri in nml:
+            ns = get_namespace(uri)
+            if not namespace.get(ns):
+                namespace[ns] = [uri]
+            else:
+                namespace[ns].append(uri)
+        print(f"Missing {len(nml)} labels from {len(namespace.keys())} namespaces")
+        for i, ns in enumerate(sorted(namespace.keys()), 1):
+            print(f"\n{i}. " + ns)
+            for uri in sorted(namespace[ns]):
+                print("\t" + uri.replace(ns, ""))
 
 
 if __name__ == "__main__":
