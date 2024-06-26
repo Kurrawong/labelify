@@ -126,7 +126,7 @@ def cli(args=None):
 
     def url_file_or_folder(input: str) -> ParseResult | Path:
         parsed = urlparse(input)
-        if all([parsed.scheme, parsed.netloc, parsed.path.endswith("sparql")]):
+        if all([parsed.scheme, parsed.netloc]):
             return parsed
         path = Path(input)
         if path.is_file():
