@@ -120,6 +120,59 @@ def get_missing_labels(
     return nodes
 
 
+def get_triples_from_sparql_endpoint(args: argparse.Namespace) -> Graph:
+    g = Graph()
+    offset = 0
+    batch_size = 50000
+    n_results = batch_size
+    url = urlunparse(args.input)
+    if not args.raw:
+        print(
+            f"Loading triples from {url}, using graph: {'default' if not args.graph else args.graph}"
+        )
+        print(f"\tbatch_size: {batch_size}")
+    sparql = SPARQLWrapper(endpoint=url, defaultGraph=args.graph)
+    sparql.setReturnFormat(JSONLD)
+    sparql.setTimeout(args.timeout)
+    if args.username and not args.password:
+        sparql.setCredentials(user=args.username, passwd=getpass("password:"))
+        if not args.raw:
+            print("\n")
+    elif args.username and args.password:
+        sparql.setCredentials(user=args.username, passwd=args.password)
+    while n_results == batch_size:
+        sparql.setQuery(
+            """
+        construct {{
+            ?s ?p ?o .
+        }}
+        where {{
+            ?s ?p ?o .
+        }}
+        order by ?s
+        limit {}
+        offset {}
+        """.format(
+                batch_size, offset
+            )
+        )
+        try:
+            g_part = sparql.queryAndConvert()
+            n_results = len(g_part)
+            offset += batch_size
+        except (URLError, Unauthorized, EndPointNotFound, TimeoutError) as e:
+            print(e)
+            exit(1)
+        g += g_part
+        if not args.raw:
+            print(
+                f"\tfetched: {len(g):,}",
+                end="\r" if n_results == batch_size else "\n\n",
+                flush=True,
+            )
+    return g
+
+
 def cli(args=None):
     if args is None:  # vocexcel run via entrypoint
         args = sys.argv[1:]
@@ -230,58 +283,20 @@ def cli(args=None):
         help="Only output the nodes with missing labels. one per line",
     )
 
+    parser.add_argument(
+        "-t",
+        "--timeout",
+        type=int,
+        default=15,
+        dest="timeout",
+        help="timeout in seconds",
+        required=False,
+    )
+
     args = parser.parse_args(args)
 
     if isinstance(args.input, ParseResult):
-        g = Graph()
-        offset = 0
-        batch_size = 50000
-        n_results = batch_size
-        url = urlunparse(args.input)
-        if not args.raw:
-            print(
-                f"Loading triples from {url}, using graph: {'default' if not args.graph else args.graph}"
-            )
-            print(f"\tbatch_size: {batch_size}")
-        while n_results == batch_size:
-            sparql = SPARQLWrapper(endpoint=url, defaultGraph=args.graph)
-            sparql.setReturnFormat(JSONLD)
-            sparql.setQuery(
-                """
-            construct {{
-                ?s ?p ?o .
-            }}
-            where {{
-                ?s ?p ?o .
-            }}
-            order by ?s
-            limit {}
-            offset {}
-            """.format(
-                    batch_size, offset
-                )
-            )
-            if args.username and not args.password:
-                sparql.setCredentials(user=args.username, passwd=getpass("password:"))
-                if not args.raw:
-                    print("\n")
-            elif args.username and args.password:
-                sparql.setCredentials(user=args.username, passwd=args.password)
-            try:
-                g_part = sparql.queryAndConvert()
-                n_results = len(g_part)
-                offset += batch_size
-            except (URLError, Unauthorized, EndPointNotFound) as e:
-                print(e)
-                exit(1)
-            g += g_part
-            if not args.raw:
-                print(
-                    f"\tfetched: {len(g):,}",
-                    end="\r" if n_results == batch_size else "\n\n",
-                    flush=True,
-                )
-
+        g = get_triples_from_sparql_endpoint(args)
     elif args.input.is_dir():
         g = Graph()
         for file in args.input.glob("*.ttl"):
