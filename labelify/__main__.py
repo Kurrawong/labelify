@@ -11,7 +11,7 @@ from urllib.parse import ParseResult, urlparse, urlunparse
 from rdflib import Graph, URIRef
 from rdflib.namespace import DCTERMS, RDFS, SDO, SKOS
 from SPARQLWrapper import JSONLD, SPARQLWrapper
-from SPARQLWrapper.SPARQLExceptions import EndPointNotFound
+from SPARQLWrapper.SPARQLExceptions import EndPointNotFound, Unauthorized
 
 from labelify.utils import get_namespace, list_of_predicates_to_alternates
 
@@ -245,6 +245,7 @@ def cli(args=None):
             print(f"\tbatch_size: {batch_size}")
         while n_results == batch_size:
             sparql = SPARQLWrapper(endpoint=url, defaultGraph=args.graph)
+            sparql.setReturnFormat(JSONLD)
             sparql.setQuery(
                 """
             construct {{
@@ -262,11 +263,15 @@ def cli(args=None):
             )
             if args.username and not args.password:
                 sparql.setCredentials(user=args.username, passwd=getpass("password:"))
+                if not args.raw:
+                    print("\n")
+            elif args.username and args.password:
+                sparql.setCredentials(user=args.username, passwd=args.password)
             try:
                 g_part = sparql.queryAndConvert()
                 n_results = len(g_part)
                 offset += batch_size
-            except (EndPointNotFound, URLError) as e:
+            except (URLError, Unauthorized, EndPointNotFound) as e:
                 print(e)
                 exit(1)
             g += g_part
