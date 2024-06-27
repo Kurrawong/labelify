@@ -36,7 +36,7 @@ _but don't check for missing labels in `supportingVocab.ttl`_
 labelify myOntology.ttl --context supportingVocab.ttl
 ----
 
-Same as above but use all the labelling predicates given in `myLabellingPredicates.txt.`
+Same as above but use the additional labelling predicates given in `myLabellingPredicates.txt.`
 
 _By default only rdfs:label is used as a labelling predicate._
 
@@ -49,7 +49,6 @@ Where `myLabellingPredicates.txt` is a list of labelling predicates (one per lin
 
 [source,txt]
 ----
-http://www.w3.org/2000/01/rdf-schema#label
 http://www.w3.org/2004/02/skos/core#prefLabel
 http://schema.org/name
 ----

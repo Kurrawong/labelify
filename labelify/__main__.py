@@ -23,7 +23,7 @@ def get_labelling_predicates(l_arg):
     if l_arg == str(RDFS.label):
         pass
     elif Path(l_arg).is_file():
-        labels.extend(open(l_arg).readlines())
+        labels.extend([URIRef(label.strip()) for label in open(l_arg).readlines()])
     elif "," in l_arg:
         labels.extend([URIRef(item) for item in l_arg.split(",")])
     elif l_arg is not None:
