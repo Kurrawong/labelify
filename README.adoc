@@ -6,9 +6,9 @@ It is highly configurable and works on a number of different RDF data sources.
 == Installation
 
 [source,shell]
----
+----
 pip install git+https://github.com/Kurrawong/labelify
----
+----
 
 == Command Line Usage
 
@@ -48,11 +48,11 @@ labelify myOntology.ttl --context supportingVocab.ttl --labels myLabellingPredic
 Where `myLabellingPredicates.txt` is a list of labelling predicates (one per line and unprefixed):
 
 [source,txt]
----
+----
 http://www.w3.org/2000/01/rdf-schema#label
 http://www.w3.org/2004/02/skos/core#prefLabel
 http://schema.org/name
----
+----
 
 And finally, find all the missing labels in the subgraph `http://example-graph`
 at the sparql endpoint `http://mytriplestore/sparql` using basic HTTP auth to connect.
@@ -61,9 +61,9 @@ _labelify will prompt for the password or it can be provided with the `--passwor
 mind it being saved to the shell history.
 
 [source,shell]
----
+----
 labelify http://mytriplestore/sparql --graph http://example-graph --username admin
----
+----
 
 == Command line output formats
 
@@ -119,19 +119,19 @@ Clone the repository and install the dependencies
 _labelify uses https://python-poetry.org/[Poetry] to manage its dependencies._
 
 [source,shell]
----
+----
 git clone git@github.com:Kurrawong/labelify.git
 cd labelify
 poetry install
----
+----
 
 You can then use labelify from the command line
 
 [source,shell]
----
+----
 poetry shell
 python labelify/ ...
----
+----
 
 === Running tests
 
