@@ -1,22 +1,91 @@
 = labelify
 
-labelify is a small Python command line application that analyses a given RDF graph (a file) and prints a list of IRIs for subjects and/or predicates and/or objects that don't have labels.
+labelify is a Python module and command line utility that identifies unlabelled resources in a graph.
+It is highly configurable and works on a number of different RDF data sources.
 
-Example command line use:
+== Installation
 
 [source,shell]
 ---
 pip install git+https://github.com/Kurrawong/labelify
 ---
 
+== Command Line Usage
+
+Find all missing labels in `myOntology.ttl:`
+
 [source,shell]
 ----
-labelify tests/one/data-access-rights.ttl -c tests/one/background -l https://schema.org/name,http://www.w3.org/2004/02/skos/core\#
+labelify myOntology.ttl
 ----
 
-The above call analyses data-access-rights.ttl in the tests folder of this repository for labels for all s, p & o and looks within the RDF files in tests/one/background to find them. It treats the `skos:prefLabel` predicate as indicating labels as well as the default `rdfs:label`
+Find missing labels for all the predicates (not subjects or objects) in `myOntology.ttl:`
 
-Example Python script use:
+[source,shell]
+----
+labelify myOntology.ttl --nodetype predicates
+----
+
+Find all missing labels in `myOntology.ttl` taking into account the labels which have been defined in
+another file called `supportingVocab.ttl`.
+
+_but don't check for missing labels in `supportingVocab.ttl`_
+
+[source,shell]
+----
+labelify myOntology.ttl --context supportingVocab.ttl
+----
+
+Same as above but use all the labelling predicates given in `myLabellingPredicates.txt.`
+
+_By default only rdfs:label is used as a labelling predicate._
+
+[source,shell]
+----
+labelify myOntology.ttl --context supportingVocab.ttl --labels myLabellingPredicates.txt
+----
+
+Where `myLabellingPredicates.txt` is a list of labelling predicates (one per line and unprefixed):
+
+[source,txt]
+---
+http://www.w3.org/2000/01/rdf-schema#label
+http://www.w3.org/2004/02/skos/core#prefLabel
+http://schema.org/name
+---
+
+And finally, find all the missing labels in the subgraph `http://example-graph`
+at the sparql endpoint `http://mytriplestore/sparql` using basic HTTP auth to connect.
+
+_labelify will prompt for the password or it can be provided with the `--password` flag if you dont
+mind it being saved to the shell history.
+
+[source,shell]
+---
+labelify http://mytriplestore/sparql --graph http://example-graph --username admin
+---
+
+== Command line output formats
+
+By default, Labelify will print helpful progress and configuration messages and attempt to group the
+missing labels by namespace, making it easier to quickly parse the output.
+
+The `--raw` option can be appended to any of the examples above to tell labelify to only print the
+uris of objects with missing labels (one per line) and no other messages. This is useful for command
+line composition if you wish to pipe the output into another process.
+
+== More command line options
+
+For more help and the complete list of command line options just run `labelify --help`
+
+As per unix conventions all the flags shown above can also be used with short codes.
+i.e. `-g` is the same as `--graph`.
+
+== Usage as a module
+
+print missing labels for all the objects (not subjects or predicates) in `myOntology.ttl`.
+Take into account any labels which have been defined in files in the `supportingVocabs` directory.
+Using skos:prefLabel and rdfs:label as the labelling predicates
 
 [source,python]
 ----
@@ -25,79 +94,63 @@ from rdflib import Graph
 from rdflib.namespace import RDFS, SKOS
 import glob
 
-g = Graph().parse("tests/one/data-access-rights.ttl")
-cg = Graph()
-for c in glob.glob("tests/one/background/*.ttl"):
-    cg.parse(c)
+graph = Graph().parse("myOntology.ttl")
+context_graph = Graph()
+for context_file in glob.glob("supportingVocabs/*.ttl"):
+    context_graph.parse(context_file)
+labelling_predicates = [SKOS.prefLabel, RDFS.label],
+nodetype = "objects"
 
-missing = get_missing_labels(
-    g,
-    cg,
-    [SKOS.prefLabel, RDFS.label],
-    "objects"
+missing_labels = get_missing_labels(
+    graph,
+    context_graph,
+    labelling_predicates,
+    nodetype
 )
-print(missing)
+print(missing_labels)
 ----
-
-As per the command line script further above, this use within a Python script looks for missing labels within the RDF file tests/one/data-access-rights.ttl, supplying any that it can from tests/one/background/ and treating `skos:prefLabel` and `rdfs:label` as labelling predicates.
-
-Full command line usage documentation:
-
-[source,shell]
-----
-usage: labelify [-h] [-v] [-c CONTEXT] [-s {true,false}] [-l LABELS] [-n {subjects,predicates,objects,all}] [-e {true,false}] input
-
-positional arguments:
-  input                 Input RDF file being analysed
-
-options:
-  -h, --help            show this help message and exit
-  -v, --version         show program's version number and exit
-  -c CONTEXT, --context CONTEXT
-                        A folder path containing RDF files or a single RDF file path to the ontology(ies) containing labels for the input
-  -s {true,false}, --supress {true,false}
-                        Produces no output if set to 'true'. This is used for testing only
-  -l LABELS, --labels LABELS
-                        A list of predicates (IRIs) to looks for that indicate labels. A comma-delimited list may be supplied or the path of a file containing labelling IRIs, one per line
-                        may be supplied. Default is RDFS.label
-  -n {subjects,predicates,objects,all}, --nodetype {subjects,predicates,objects,all}
-                        The type of node you want to check for labels. Select 'subject', 'predicate', 'object' or 'all'
-  -e {true,false}, --evaluate {true,false}
-                        Evaluate nodes in the context graphs for labels
-----
-
-== Installation
-
-This tool uses Python's https://python-poetry.org/[Poetry] dependency manager so you can load the necissary dependencies into a Python virtual environment by running `python poetry install` in the root directory of this repository.
-
-After that, the `labelify` command line tool will work, on Linux/Mac.
-
-== License
-
-https://opensource.org/license/bsd-3-clause/[BSD-3-Clause], if anyone is asking.
 
 == Development
 
-=== Install Python dependencies
+=== Installing from source
+
+Clone the repository and install the dependencies
+
+_labelify uses https://python-poetry.org/[Poetry] to manage its dependencies._
 
 [source,shell]
-----
+---
+git clone git@github.com:Kurrawong/labelify.git
+cd labelify
 poetry install
-----
+---
 
-=== Run tests
+You can then use labelify from the command line
+
+[source,shell]
+---
+poetry shell
+python labelify/ ...
+---
+
+=== Running tests
 
 [source,shell]
 ----
 poetry run pytest
 ----
 
-=== Format codebase
+=== Formatting the codebase
 
 [source,shell]
 ----
 poetry run black . && poetry run ruff check --fix labelify/
 ----
+
+== License
+
+https://opensource.org/license/bsd-3-clause/[BSD-3-Clause], if anyone is asking.
+
 
 == Contact
 
