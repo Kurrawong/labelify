@@ -19,7 +19,12 @@ __version__ = "0.0.0"
 
 
 def get_labelling_predicates(l_arg):
-    labels = [RDFS.label]
+    labels = [
+        SKOS.prefLabel,
+        DCTERMS.title,
+        RDFS.label,
+        SDO.name,
+    ]
     if l_arg == str(RDFS.label):
         pass
     elif Path(l_arg).is_file():
