@@ -3,9 +3,9 @@ import os
 import sys
 from getpass import getpass
 from pathlib import Path
+from textwrap import indent
 from typing import Literal as TLiteral
 from typing import Optional
-from textwrap import indent
 from urllib.error import URLError
 from urllib.parse import ParseResult, urlparse, urlunparse
 
@@ -153,7 +153,9 @@ xxxx
             OPTIONAL { ?iri rdfs:seeAlso ?seeAlso }            
         }
         """
-    q = q.replace("xxxx", indent("<" + ">\n<".join(iris_with_no_labels) + ">", "                "))
+    q = q.replace(
+        "xxxx", indent("<" + ">\n<".join(iris_with_no_labels) + ">", "                ")
+    )
 
     # run the query against the data
     return g.query(q)
@@ -347,9 +349,15 @@ def cli(args=None):
             iris = args.getlabels.split(",")
 
         if not Path(args.input).is_dir():
-            raise ValueError("ERROR: You have called the function getlabels but have not supplied a directory for the input from which to get the labels")
+            raise ValueError(
+                "ERROR: You have called the function getlabels but have not supplied a directory for the input from which to get the labels"
+            )
 
-        print(get_labels_from_repository(Path(args.input), iris).serialize(format="longturtle").decode())
+        print(
+            get_labels_from_repository(Path(args.input), iris)
+            .serialize(format="longturtle")
+            .decode()
+        )
         exit()
 
     if isinstance(args.input, ParseResult):

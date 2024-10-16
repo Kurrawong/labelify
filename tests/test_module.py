@@ -47,6 +47,6 @@ def test_get_labels_from_repository():
                 rdfs:label "Activity Influence" ;
             .
             """,
-        format="turtle"
+        format="turtle",
     )
     assert g2.isomorphic(lbls_graph)

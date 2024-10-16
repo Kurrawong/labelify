@@ -121,4 +121,3 @@ def test_getlabels():
         err += p.stderr.readline().decode()
 
     assert err == ""
-
