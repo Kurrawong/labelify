@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "labelify"
-version = "0.1.0"
-description = "A small program that analyses a given RDF graph and indicates whether things have labels of various sorts or not"
+version = "0.1.5"
+description = "Analyse an RDF graph to find URI's without human readable labels."
 authors = ["Nicholas Car <nick@kurrawong.ai>"]
 license = "BSD-3-Clause"
 readme = "README.adoc"
@@ -9,12 +9,12 @@ readme = "README.adoc"
 [tool.poetry.dependencies]
 python = "^3.12"
 rdflib = "^7.0.0"
-ruff = "^0.0.270"
 
-
+sparqlwrapper = "^2.0.0"
 [tool.poetry.group.dev.dependencies]
 black = "^23.3.0"
 pytest = "^8.3.3"
+ruff = "^0.3.4"
 
 [build-system]
 requires = ["poetry-core"]
@@ -24,7 +24,7 @@ build-backend = "poetry.core.masonry.api"
 labelify = 'labelify:cli'
 
 [tool.ruff]
-select = [
+lint.select = [
     "I001",
     "I002"
 ]

@@ -39,7 +39,7 @@ def test_cmd_input_invalid():
     while p.poll() is None:
         err += p.stderr.readline().decode()
 
-    assert "not a file or a directory" in err
+    assert "Must be a file, folder or sparql endpoint" in err
 
 
 def test_cmd_context_invalid():
@@ -59,7 +59,7 @@ def test_cmd_context_invalid():
     while p.poll() is None:
         err += p.stderr.readline().decode()
 
-    assert "not a file or a directory" in err
+    assert "Must be a file, folder or sparql endpoint" in err
 
 
 def test_nodetype_all():
@@ -72,6 +72,7 @@ def test_nodetype_all():
             "tests/one/data-access-rights.ttl",
             "-l",
             "http://www.w3.org/2004/02/skos/core#prefLabel,https://schema.org/name",
+            "-r",
         ],
         stdout=subprocess.PIPE,
     ) as proc:
