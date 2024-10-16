@@ -16,7 +16,7 @@ from SPARQLWrapper.SPARQLExceptions import EndPointNotFound, Unauthorized
 
 from labelify.utils import get_namespace, list_of_predicates_to_alternates
 
-__version__ = "0.0.1"
+__version__ = "0.1.5"
 
 
 def get_labelling_predicates(l_arg):
