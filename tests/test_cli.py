@@ -99,3 +99,25 @@ def test_x():
         result = ""
         while proc.poll() is None:
             result += proc.stdout.readline().decode()
+
+
+def test_getlabels():
+    p = subprocess.Popen(
+        [
+            "labelify",
+            "-g",
+            "tests/get_iris/iris.txt",
+            "tests/one/background/",
+            "-s",
+            "true",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    err = ""
+    while p.poll() is None:
+        err += p.stderr.readline().decode()
+
+    assert err == ""
+

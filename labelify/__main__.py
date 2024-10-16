@@ -4,13 +4,14 @@ import sys
 from pathlib import Path
 from typing import Literal as TLiteral
 from typing import Optional
+from textwrap import indent
 
 from rdflib import Graph, URIRef
 from rdflib.namespace import DCTERMS, RDFS, SDO, SKOS
 
 from labelify.utils import list_of_predicates_to_alternates
 
-__version__ = "0.0.0"
+__version__ = "0.0.1"
 
 
 def get_labelling_predicates(l_arg):
@@ -35,7 +36,7 @@ def call_method(o, name):
     return getattr(o, name)()
 
 
-def get_missing_labels(
+def find_missing_labels(
     graph: Graph,
     context_graph: Optional[Graph] = None,
     labelling_predicates: list[URIRef] = [
@@ -75,21 +76,21 @@ def get_missing_labels(
         target_graph = graph
 
     if node_type == "all":
-        s = get_missing_labels(
+        s = find_missing_labels(
             graph,
             context_graph,
             labelling_predicates,
             "subjects",
             evaluate_context_nodes,
         )
-        p = get_missing_labels(
+        p = find_missing_labels(
             graph,
             context_graph,
             labelling_predicates,
             "predicates",
             evaluate_context_nodes,
         )
-        o = get_missing_labels(
+        o = find_missing_labels(
             graph,
             context_graph,
             labelling_predicates,
@@ -113,6 +114,39 @@ def get_missing_labels(
                 continue
         nodes.add(n)
     return nodes
+
+
+def get_labels_from_repository(path_to_folder_of_files: Path, iris_with_no_labels: []):
+    # load all the files in the folder
+    g = Graph()
+    for f in path_to_folder_of_files.glob("**/*"):
+        g.parse(f)
+
+    # create label extraction query
+    q = """
+        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        PREFIX schema: <https://schema.org/>
+        
+        CONSTRUCT {
+            ?iri 
+                rdfs:label ?label ;
+                schema:description ?desc ;
+                rdfs:seeAlso ?seeAlso ;
+            .
+        }
+        WHERE {
+            VALUES ?iri {
+xxxx
+            }
+            ?iri rdfs:label ?label .
+            OPTIONAL { ?iri schema:description ?desc }
+            OPTIONAL { ?iri rdfs:seeAlso ?seeAlso }            
+        }
+        """
+    q = q.replace("xxxx", indent("<" + ">\n<".join(iris_with_no_labels) + ">", "                "))
+
+    # run the query against the data
+    return g.query(q)
 
 
 def cli(args=None):
@@ -146,7 +180,7 @@ def cli(args=None):
         version="{version}".format(version=__version__),
     )
 
-    parser.add_argument("input", help="Input RDF file being analysed", type=file_path)
+    parser.add_argument("input", help="Input RDF file being analysed", type=file_or_dir_path)
 
     parser.add_argument(
         "-c",
@@ -188,7 +222,26 @@ def cli(args=None):
         default="false",
     )
 
+    parser.add_argument(
+        "-g",
+        "--getlabels",
+        help="Gets labels for a given list of IRIs from RDF files in a given location",
+        type=str,
+    )
+
     args = parser.parse_args(args)
+
+    if args.getlabels:
+        if Path(args.getlabels).is_file():
+            iris = Path(args.getlabels).read_text().splitlines()
+        else:
+            iris = args.getlabels.split(",")
+
+        if not Path(args.input).is_dir():
+            raise ValueError("ERROR: You have called the function getlabels but have not supplied a directory for the input from which to get the labels")
+
+        print(get_labels_from_repository(Path(args.input), iris).serialize(format="longturtle").decode())
+        exit()
 
     g = Graph().parse(args.input)
     cg = None
@@ -211,7 +264,7 @@ def cli(args=None):
 
     labelling_predicates = get_labelling_predicates(args.labels)
 
-    nml = get_missing_labels(
+    nml = find_missing_labels(
         g,
         cg,
         labelling_predicates,

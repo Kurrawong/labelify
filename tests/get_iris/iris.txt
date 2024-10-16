@@ -1,0 +1,3 @@
+http://purl.org/linked-data/registry#status
+http://www.w3.org/ns/dcat#CatalogRecord
+http://www.w3.org/ns/prov#ActivityInfluence

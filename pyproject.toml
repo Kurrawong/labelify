@@ -7,14 +7,14 @@ license = "BSD-3-Clause"
 readme = "README.adoc"
 
 [tool.poetry.dependencies]
-python = "^3.9"
-rdflib = "^6.3.2"
+python = "^3.12"
+rdflib = "^7.0.0"
 ruff = "^0.0.270"
 
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.3.0"
-pytest = "^7.3.1"
+pytest = "^8.3.3"
 
 [build-system]
 requires = ["poetry-core"]

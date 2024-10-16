@@ -5,9 +5,9 @@ labelify is a small Python command line application that analyses a given RDF gr
 Example command line use:
 
 [source,shell]
----
+----
 pip install git+https://github.com/Kurrawong/labelify
----
+----
 
 [source,shell]
 ----
@@ -20,7 +20,7 @@ Example Python script use:
 
 [source,python]
 ----
-from labelify import get_missing_labels
+from labelify import find_missing_labels
 from rdflib import Graph
 from rdflib.namespace import RDFS, SKOS
 import glob
@@ -30,7 +30,7 @@ cg = Graph()
 for c in glob.glob("tests/one/background/*.ttl"):
     cg.parse(c)
 
-missing = get_missing_labels(
+missing = find_missing_labels(
     g,
     cg,
     [SKOS.prefLabel, RDFS.label],
@@ -39,13 +39,26 @@ missing = get_missing_labels(
 print(missing)
 ----
 
+and, to extract labels, descriptions & seeAlso details for given IRIs from a given directory of RDF files:
+
+[source,python]
+----
+from pathlib import Path
+from labelify import get_labels_from_repository
+
+iris = Path("tests/get_iris/iris.txt").read_text().splitlines()
+lbls_graph = get_labels_from_repository(Path("tests/one/background/"), iris)
+----
+
+
+
 As per the command line script further above, this use within a Python script looks for missing labels within the RDF file tests/one/data-access-rights.ttl, supplying any that it can from tests/one/background/ and treating `skos:prefLabel` and `rdfs:label` as labelling predicates.
 
 Full command line usage documentation:
 
 [source,shell]
 ----
-usage: labelify [-h] [-v] [-c CONTEXT] [-s {true,false}] [-l LABELS] [-n {subjects,predicates,objects,all}] [-e {true,false}] input
+usage: labelify [-h] [-v] [-c CONTEXT] [-s {true,false}] [-l LABELS] [-n {subjects,predicates,objects,all}] [-e {true,false}] [-g GETLABELS] input
 
 positional arguments:
   input                 Input RDF file being analysed
@@ -58,12 +71,14 @@ options:
   -s {true,false}, --supress {true,false}
                         Produces no output if set to 'true'. This is used for testing only
   -l LABELS, --labels LABELS
-                        A list of predicates (IRIs) to looks for that indicate labels. A comma-delimited list may be supplied or the path of a file containing labelling IRIs, one per line
-                        may be supplied. Default is RDFS.label
+                        A list of predicates (IRIs) to looks for that indicate labels. A comma-delimited list may be supplied or the path of a file containing labelling IRIs, one per line may be supplied. Default is
+                        RDFS.label
   -n {subjects,predicates,objects,all}, --nodetype {subjects,predicates,objects,all}
                         The type of node you want to check for labels. Select 'subject', 'predicate', 'object' or 'all'
   -e {true,false}, --evaluate {true,false}
                         Evaluate nodes in the context graphs for labels
+  -g GETLABELS, --getlabels GETLABELS
+                        Gets labels for a given list of IRIs from RDF files in a given location
 ----
 
 == Installation
