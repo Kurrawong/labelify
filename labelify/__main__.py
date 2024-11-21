@@ -1,17 +1,16 @@
 import argparse
-import os
 import sys
 from getpass import getpass
 from pathlib import Path
 from textwrap import indent
 from typing import Literal as TLiteral
-from typing import Optional
+from typing import Optional, Union
 from urllib.error import URLError
 from urllib.parse import ParseResult, urlparse, urlunparse
 
 from rdflib import Graph, URIRef
 from rdflib.namespace import DCTERMS, RDFS, SDO, SKOS
-from SPARQLWrapper import JSONLD, SPARQLWrapper
+from SPARQLWrapper import JSONLD, SPARQLWrapper, TURTLE
 from SPARQLWrapper.SPARQLExceptions import EndPointNotFound, Unauthorized
 
 from labelify.utils import get_namespace, list_of_predicates_to_alternates
@@ -26,9 +25,7 @@ def get_labelling_predicates(l_arg):
         RDFS.label,
         SDO.name,
     ]
-    if l_arg == str(RDFS.label):
-        pass
-    elif Path(l_arg).is_file():
+    if Path(l_arg).is_file():
         labels.extend([URIRef(label.strip()) for label in open(l_arg).readlines()])
     elif "," in l_arg:
         labels.extend([URIRef(item) for item in l_arg.split(",")])
@@ -62,7 +59,7 @@ def find_missing_labels(
 
     :param graph: the graph to look for nodes in
     :param context_graph: the additional context to search in for labels
-    :param labelling_predicates: the IRIs of the label predicates to look for. Default is rdfs:label
+    :param labelling_predicates: the IRIs of the label predicates to look for. Default is dcterms:title, rdfs:label, schema:name, skos:prefLabel
     :param node_type: S, P, O or all of them
     :param evaluate_context_nodes: whether (True) or not (False) to include Ss, Ps, & Os or all of the nodes in the
     context_graph when looking for nodes missing labels
@@ -126,16 +123,12 @@ def find_missing_labels(
     return nodes
 
 
-def get_labels_from_repository(path_to_folder_of_files: Path, iris_with_no_labels: []):
-    # load all the files in the folder
-    g = Graph()
-    for f in path_to_folder_of_files.glob("**/*"):
-        g.parse(f)
-
-    # create label extraction query
+def get_labels_from_repository(iris_with_no_labels: [], p: Union[Path, ParseResult], timeout: Optional[int] = None):
     q = """
+        PREFIX dcterms: <http://purl.org/dc/terms/>
         PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
         PREFIX schema: <https://schema.org/>
+        PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 
         CONSTRUCT {
             ?iri 
@@ -145,20 +138,55 @@ def get_labels_from_repository(path_to_folder_of_files: Path, iris_with_no_label
             .
         }
         WHERE {
-            VALUES ?iri {
-xxxx
+            VALUES ?t {
+                skos:prefLabel
+                dcterms:title                        
+                rdfs:label
+                schema:name
             }
-            ?iri rdfs:label ?label .
-            OPTIONAL { ?iri schema:description ?desc }
-            OPTIONAL { ?iri rdfs:seeAlso ?seeAlso }            
-        }
-        """
-    q = q.replace(
-        "xxxx", indent("<" + ">\n<".join(iris_with_no_labels) + ">", "                ")
-    )
 
-    # run the query against the data
-    return g.query(q)
+            VALUES ?iri {
+                XXXX
+            }
+            ?iri ?t ?label .
+
+            VALUES ?dt {
+                skos:definition
+                dcterms:description                        
+                rdfs:comment
+                schema:description
+            }
+
+            OPTIONAL { ?iri ?dt ?desc }
+            OPTIONAL { ?iri rdfs:seeAlso ?seeAlso }                
+        }
+        """.replace("XXXX", "".join(["<" + x.strip() + ">\n                    " for x in iris]).strip())
+
+    if isinstance(p, ParseResult):
+        sparql = SPARQLWrapper(p.geturl())
+        sparql.setReturnFormat(TURTLE)
+        sparql.setTimeout(args.timeout)
+        if args.username and not args.password:
+            sparql.setCredentials(user=args.username, passwd=getpass("password:"))
+        elif args.username and args.password:
+            sparql.setCredentials(user=args.username, passwd=args.password)
+        sparql.setQuery(q)
+        try:
+            g = Graph().parse(data=sparql.queryAndConvert())
+        except (URLError, Unauthorized, EndPointNotFound, TimeoutError) as e:
+            print(e)
+            exit(1)
+
+    elif p.is_file():
+        g = Graph().parse(p)
+    elif p.is_dir():
+        g = Graph()
+        for f in p.glob("**/*"):
+            g.parse(f)
+
+    return_g = Graph()
+    for r in g.query(q):
+        return_g.add(r)
 
 
 def get_triples_from_sparql_endpoint(args: argparse.Namespace) -> Graph:
@@ -214,10 +242,7 @@ def get_triples_from_sparql_endpoint(args: argparse.Namespace) -> Graph:
     return g
 
 
-def cli(args=None):
-    if args is None:  # vocexcel run via entrypoint
-        args = sys.argv[1:]
-
+def setup_cli_parser(args=None):
     def url_file_or_folder(input: str) -> ParseResult | Path:
         parsed = urlparse(input)
         if all([parsed.scheme, parsed.netloc]):
@@ -238,6 +263,13 @@ def cli(args=None):
         "--version",
         action="version",
         version="{version}".format(version=__version__),
+    )
+
+    parser.add_argument(
+        "-x",
+        "--extract",
+        help="Extract labels for IRIs in a given file ending .txt from a given folder of RDF files or a SPARQL endpoint",
+        type=url_file_or_folder,
     )
 
     parser.add_argument(
@@ -265,8 +297,8 @@ def cli(args=None):
         "-l",
         "--labels",
         help="A list of predicates (IRIs) to looks for that indicate labels. A comma-delimited list may be supplied or "
-        "the path of a file containing labelling IRIs, one per line may be supplied. Default is RDFS.label",
-        default=RDFS.label,
+             "the path of a file containing labelling IRIs, one per line may be supplied. Default is skos:prefLabel, dcterms:title, rdfs:label, schema:name=",
+        default=",".join([str(x) for x in [SKOS.prefLabel, DCTERMS.title, RDFS.label, SDO.name]]),
         type=str,
     )
 
@@ -340,24 +372,24 @@ def cli(args=None):
         type=str,
     )
 
-    args = parser.parse_args(args)
+    return parser.parse_args(args)
 
-    if args.getlabels:
-        if Path(args.getlabels).is_file():
-            iris = Path(args.getlabels).read_text().splitlines()
-        else:
-            iris = args.getlabels.split(",")
 
-        if not Path(args.input).is_dir():
-            raise ValueError(
-                "ERROR: You have called the function getlabels but have not supplied a directory for the input from which to get the labels"
-            )
+def cli(args=None):
+    if args is None:  # vocexcel run via entrypoint
+        args = sys.argv[1:]
 
-        print(
-            get_labels_from_repository(Path(args.input), iris)
-            .serialize(format="longturtle")
-            .decode()
-        )
+    args = setup_cli_parser(args)
+
+    # -v version auto-handled here
+
+    if args.extract:
+        print("Extractor mode")
+        if args.extract.suffix != ".txt":
+            raise argparse.ArgumentTypeError("When specifying --extract, you must profile a .txt file containing IRIs without labels, one per line")
+
+        iris = args.extract.read_text().splitlines()
+        print(get_labels_from_repository(iris, args.input))
         exit()
 
     if isinstance(args.input, ParseResult):
@@ -409,7 +441,7 @@ def cli(args=None):
         True if args.evaluate == "true" else False,
     )
     if args.raw:
-        for uri in nml:
+        for uri in sorted(nml):
             print(uri)
     else:
         namespace: dict = {}

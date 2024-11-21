@@ -53,7 +53,7 @@ http://www.w3.org/2004/02/skos/core#prefLabel
 http://schema.org/name
 ----
 
-And finally, find all the missing labels in the subgraph `http://example-graph`
+Find all the missing labels in the subgraph `http://example-graph`
 at the sparql endpoint `http://mytriplestore/sparql` using basic HTTP auth to connect.
 
 _labelify will prompt for the password or it can be provided with the `--password` flag if you dont
@@ -64,18 +64,40 @@ mind it being saved to the shell history.
 labelify http://mytriplestore/sparql --graph http://example-graph --username admin
 ----
 
+=== Label Extraction
+
+Get all the IRIs with missing labels from a local RDF file and put them into a text file with an IRI per line:
+
+[source,shell]
+----
+labelify -n all my_file.ttl -r > iris-missing-labels.txt
+----
+
+_note use of `-r` for simple IRI printing_
+
+Use the output file to generate an RDF file containing the labes, extracted from either another RDF file, a directory of RDF files or a SPARQL endpoint:
+
+[source,shell]
+----
+labelify -x iris-missing-labels.txt other-rdf-file.ttl > labels.ttl
+# or
+labelify -x iris-missing-labels.txt dir-of-rdf-files/ > labels.ttl
+# or
+labelify -x iris-missing-labels.txt http://some-sparql-endpoint.com/sparql > labels.ttl
+----
+
 == Command line output formats
 
-By default, Labelify will print helpful progress and configuration messages and attempt to group the
+By default, labelify will print helpful progress and configuration messages and attempt to group the
 missing labels by namespace, making it easier to quickly parse the output.
 
-The `--raw` option can be appended to any of the examples above to tell labelify to only print the
+The `--raw/-r` option can be appended to any of the examples above to tell labelify to only print the
 uris of objects with missing labels (one per line) and no other messages. This is useful for command
 line composition if you wish to pipe the output into another process.
 
 == More command line options
 
-For more help and the complete list of command line options just run `labelify --help`
+For more help and the complete list of command line options just run `labelify --help/-h`
 
 As per unix conventions all the flags shown above can also be used with short codes.
 i.e. `-g` is the same as `--graph`.
@@ -160,7 +182,6 @@ poetry run black . && poetry run ruff check --fix labelify/
 == License
 
 https://opensource.org/license/bsd-3-clause/[BSD-3-Clause], if anyone is asking.
-
 
 == Contact
 
