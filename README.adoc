@@ -104,9 +104,9 @@ i.e. `-g` is the same as `--graph`.
 
 == Usage as a module
 
-print missing labels for all the objects (not subjects or predicates) in `myOntology.ttl`.
-Take into account any labels which have been defined in files in the `supportingVocabs` directory.
-Using skos:prefLabel and rdfs:label as the labelling predicates
+Print missing labels for all the objects (not subjects or predicates) in `myOntology.ttl`, taking into account any labels which have been defined in RDF files in the `supportingVocabs` directory.
+
+Using `skos:prefLabel` and `rdfs:label`, but not `dcterms:title` and `schema:name` (as per default) as the labelling predicates.
 
 [source,python]
 ----
@@ -136,10 +136,10 @@ and, to extract labels, descriptions & seeAlso details for given IRIs from a giv
 [source,python]
 ----
 from pathlib import Path
-from labelify import get_labels_from_repository
+from labelify import extract_labels
 
 iris = Path("tests/get_iris/iris.txt").read_text().splitlines()
-lbls_graph = get_labels_from_repository(Path("tests/one/background/"), iris)
+lbls_graph = extract_labels(Path("tests/one/background/"), iris)
 ----
 
 == Development

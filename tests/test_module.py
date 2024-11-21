@@ -1,4 +1,4 @@
-from labelify import find_missing_labels, get_labels_from_repository
+from labelify import find_missing_labels, extract_labels
 from rdflib import Graph, URIRef
 from rdflib.namespace import RDFS, SKOS
 import glob
@@ -25,28 +25,15 @@ def test_without_cg():
     assert len(missing) == 7
 
 
-def test_get_labels_from_repository():
-    iris = Path("tests/get_iris/iris.txt").read_text().splitlines()
-    lbls_graph = get_labels_from_repository(Path("tests/one/background/"), iris)
+def test_extract_labels():
+    # generate an IRI list from an RDF file
+    vocab_file = Path(Path(__file__).parent / "one/data-access-rights.ttl")
+    vocab_graph = Graph().parse(vocab_file)
+    iris = find_missing_labels(vocab_graph)
 
-    g2 = Graph().parse(
-        data="""
-            PREFIX dcat: <http://www.w3.org/ns/dcat#>
-            PREFIX prov: <http://www.w3.org/ns/prov#>
-            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-            
-            <http://purl.org/linked-data/registry#status>
-                rdfs:label "status" ;
-            .
-            
-            dcat:CatalogRecord
-                rdfs:label "Catalog Record"@en ;
-            .
-            
-            prov:ActivityInfluence
-                rdfs:label "Activity Influence" ;
-            .
-            """,
-        format="turtle",
-    )
-    assert g2.isomorphic(lbls_graph)
+    assert len(iris) == 23
+
+    context_dir = Path(Path(__file__).parent / "one/background")
+    labels_rdf = extract_labels(iris, context_dir)
+
+    assert len(labels_rdf) == 8

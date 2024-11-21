@@ -123,7 +123,14 @@ def find_missing_labels(
     return nodes
 
 
-def get_labels_from_repository(iris_with_no_labels: [], p: Union[Path, ParseResult], timeout: Optional[int] = None):
+def extract_labels(
+        iris: [],
+        p: Union[Path, ParseResult],
+        timeout: Optional[int] = None,
+        username: Optional[str] = None,
+        password: Optional[str] = None
+) -> Graph:
+
     q = """
         PREFIX dcterms: <http://purl.org/dc/terms/>
         PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -165,18 +172,17 @@ def get_labels_from_repository(iris_with_no_labels: [], p: Union[Path, ParseResu
     if isinstance(p, ParseResult):
         sparql = SPARQLWrapper(p.geturl())
         sparql.setReturnFormat(TURTLE)
-        sparql.setTimeout(args.timeout)
-        if args.username and not args.password:
-            sparql.setCredentials(user=args.username, passwd=getpass("password:"))
-        elif args.username and args.password:
-            sparql.setCredentials(user=args.username, passwd=args.password)
+        sparql.setTimeout(timeout)
+        if username and not password:
+            sparql.setCredentials(user=username, passwd=getpass("password:"))
+        elif username and password:
+            sparql.setCredentials(user=username, passwd=password)
         sparql.setQuery(q)
         try:
             g = Graph().parse(data=sparql.queryAndConvert())
         except (URLError, Unauthorized, EndPointNotFound, TimeoutError) as e:
             print(e)
             exit(1)
-
     elif p.is_file():
         g = Graph().parse(p)
     elif p.is_dir():
@@ -187,6 +193,8 @@ def get_labels_from_repository(iris_with_no_labels: [], p: Union[Path, ParseResu
     return_g = Graph()
     for r in g.query(q):
         return_g.add(r)
+
+    return return_g
 
 
 def get_triples_from_sparql_endpoint(args: argparse.Namespace) -> Graph:
@@ -384,12 +392,11 @@ def cli(args=None):
     # -v version auto-handled here
 
     if args.extract:
-        print("Extractor mode")
         if args.extract.suffix != ".txt":
             raise argparse.ArgumentTypeError("When specifying --extract, you must profile a .txt file containing IRIs without labels, one per line")
 
         iris = args.extract.read_text().splitlines()
-        print(get_labels_from_repository(iris, args.input))
+        print(extract_labels(iris, args.input).serialize(format="longturtle"))
         exit()
 
     if isinstance(args.input, ParseResult):
