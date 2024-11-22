@@ -15,7 +15,7 @@ from SPARQLWrapper.SPARQLExceptions import EndPointNotFound, Unauthorized
 
 from labelify.utils import get_namespace, list_of_predicates_to_alternates
 
-__version__ = "0.1.5"
+__version__ = "0.2.0"
 
 
 def get_labelling_predicates(l_arg):
@@ -151,23 +151,27 @@ def extract_labels(
                 rdfs:label
                 schema:name
             }
-
+            
             VALUES ?iri {
                 XXXX
             }
+            
             ?iri ?t ?label .
-
-            VALUES ?dt {
-                skos:definition
-                dcterms:description                        
-                rdfs:comment
-                schema:description
+            OPTIONAL {
+                VALUES ?dt {
+                    skos:definition
+                    dcterms:description                        
+                    rdfs:comment
+                    schema:description
+                }
+                 
+                ?iri ?dt ?desc 
             }
-
-            OPTIONAL { ?iri ?dt ?desc }
             OPTIONAL { ?iri rdfs:seeAlso ?seeAlso }                
         }
-        """.replace("XXXX", "".join(["<" + x.strip() + ">\n                    " for x in iris]).strip())
+        """.replace("XXXX", "".join(["<" + x.strip() + ">\n                " for x in iris]).strip())
+
+    print(q)
 
     if isinstance(p, ParseResult):
         sparql = SPARQLWrapper(p.geturl())

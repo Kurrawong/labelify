@@ -36,4 +36,4 @@ def test_extract_labels():
     context_dir = Path(Path(__file__).parent / "one/background")
     labels_rdf = extract_labels(iris, context_dir)
 
-    assert len(labels_rdf) == 8
+    assert len(labels_rdf) == 27
