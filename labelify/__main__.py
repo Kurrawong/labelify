@@ -171,8 +171,6 @@ def extract_labels(
         }
         """.replace("XXXX", "".join(["<" + x.strip() + ">\n                " for x in iris]).strip())
 
-    print(q)
-
     if isinstance(p, ParseResult):
         sparql = SPARQLWrapper(p.geturl())
         sparql.setReturnFormat(TURTLE)
