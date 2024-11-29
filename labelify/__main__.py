@@ -1,15 +1,15 @@
 import argparse
 import sys
+from argparse import ArgumentTypeError
 from getpass import getpass
 from pathlib import Path
-from textwrap import indent
 from typing import Literal as TLiteral
 from typing import Optional, Union
 from urllib.error import URLError
 from urllib.parse import ParseResult, urlparse, urlunparse
 
 from rdflib import Graph, URIRef
-from rdflib.namespace import DCTERMS, RDFS, SDO, SKOS
+from rdflib.namespace import DCTERMS, RDF, RDFS, SDO, SKOS
 from SPARQLWrapper import JSONLD, SPARQLWrapper, TURTLE
 from SPARQLWrapper.SPARQLExceptions import EndPointNotFound, Unauthorized
 
@@ -382,7 +382,34 @@ def setup_cli_parser(args=None):
         type=str,
     )
 
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=str,
+        help="Output file for IRI information (normal mode) or labels in RDF (when using -x/--extract)",
+        required=False,
+    )
+
     return parser.parse_args(args)
+
+
+def output_labels(iris_file, source: Path, dest: Path = None):
+    if iris_file.suffix != ".txt":
+        raise argparse.ArgumentTypeError(
+            "When specifying --extract, you must profile a .txt file containing IRIs without labels, one per line")
+
+    iris = iris_file.read_text().splitlines()
+    res = extract_labels(iris, source)
+    res.bind("rdf", RDF)
+    if dest:
+        o = Path(dest)
+        if o.is_file():
+            # the RDF file exists, so add to it
+            (res + Graph().parse(o)).serialize(format="longturtle", destination=o)
+        else:
+            res.serialize(format="longturtle", destination=o)
+    else:
+        print(res.serialize(format="longturtle"))
 
 
 def cli(args=None):
@@ -394,11 +421,7 @@ def cli(args=None):
     # -v version auto-handled here
 
     if args.extract:
-        if args.extract.suffix != ".txt":
-            raise argparse.ArgumentTypeError("When specifying --extract, you must profile a .txt file containing IRIs without labels, one per line")
-
-        iris = args.extract.read_text().splitlines()
-        print(extract_labels(iris, args.input).serialize(format="longturtle"))
+        output_labels(args.extract, args.input, args.output)
         exit()
 
     if isinstance(args.input, ParseResult):
@@ -449,22 +472,51 @@ def cli(args=None):
         args.nodetype,
         True if args.evaluate == "true" else False,
     )
-    if args.raw:
-        for uri in sorted(nml):
-            print(uri)
-    else:
-        namespace: dict = {}
-        for uri in nml:
-            ns = get_namespace(uri)
-            if not namespace.get(ns):
-                namespace[ns] = [uri]
+
+    if args.output:
+        if not args.raw:
+            raise ArgumentTypeError("If -o/-output is specified, -r/raw must also be specified")
+        else:
+            o = Path(args.output)
+            if o.suffix != ".txt":
+                raise ArgumentTypeError("If specifying -o/--output, you must indicate a file with the file ending .txt")
             else:
-                namespace[ns].append(uri)
-        print(f"Missing {len(nml)} labels from {len(namespace.keys())} namespaces")
-        for i, ns in enumerate(sorted(namespace.keys()), 1):
-            print(f"\n{i}. " + ns)
-            for uri in sorted(namespace[ns]):
-                print("\t" + uri.replace(ns, ""))
+                if o.is_file():
+                    # the file already exists, so add to it, deduplicatively
+                    iris = o.read_text().splitlines()
+                    # drop blank lines
+                    iris = set(list(filter(None, iris)))
+
+                    # add label-less IRIs to list received from file
+                    for uri in nml:
+                        iris.add(str(uri))
+
+                    # we-issue the file with existing IRIs, new label-less IRIs, deduplicated
+                    with open(o, "w") as o_f:
+                        for uri in sorted(set(iris)):
+                            o_f.write(uri + "\n")
+                else:
+                    # the file doesn't exist, so create it and add to it
+                    with open(o, "w") as o_f:
+                        for uri in sorted(nml):
+                            o_f.write(uri + "\n")
+    else:
+        if args.raw:
+            for uri in sorted(nml):
+                print(uri)
+        else:
+            namespace: dict = {}
+            for uri in nml:
+                ns = get_namespace(uri)
+                if not namespace.get(ns):
+                    namespace[ns] = [uri]
+                else:
+                    namespace[ns].append(uri)
+            print(f"Missing {len(nml)} labels from {len(namespace.keys())} namespaces")
+            for i, ns in enumerate(sorted(namespace.keys()), 1):
+                print(f"\n{i}. " + ns)
+                for uri in sorted(namespace[ns]):
+                    print("\t" + uri.replace(ns, ""))
 
 
 if __name__ == "__main__":

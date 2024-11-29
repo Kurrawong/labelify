@@ -1,0 +1,102 @@
+PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX schema: <https://schema.org/>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+
+dcterms:created
+    rdfs:label "Date Created"@en ;
+.
+
+dcterms:creator
+    rdfs:label "Creator"@en ;
+.
+
+dcterms:modified
+    rdfs:label "Date Modified"@en ;
+.
+
+dcterms:provenance
+    rdfs:label "Provenance"@en ;
+.
+
+dcterms:publisher
+    rdfs:label "Publisher"@en ;
+.
+
+dcterms:source
+    rdfs:label "Source"@en ;
+.
+
+<http://purl.org/linked-data/registry#status>
+    rdfs:label "status" ;
+.
+
+rdf:type
+    rdfs:label "type" ;
+.
+
+owl:Ontology
+    rdfs:label "Ontology" ;
+    schema:description "The class of ontologies" ;
+.
+
+skos:Collection
+    rdfs:label "Collection"@en ;
+.
+
+skos:Concept
+    rdfs:label "Concept"@en ;
+.
+
+skos:ConceptScheme
+    rdfs:label "Concept Scheme"@en ;
+.
+
+skos:altLabel
+    rdfs:label "alternative label"@en ;
+.
+
+skos:definition
+    rdfs:label "definition"@en ;
+.
+
+skos:hasTopConcept
+    rdfs:label "has top concept"@en ;
+.
+
+skos:inScheme
+    rdfs:label "is in scheme"@en ;
+.
+
+skos:member
+    rdfs:label "has member"@en ;
+.
+
+skos:prefLabel
+    rdfs:label "preferred label"@en ;
+.
+
+skos:topConceptOf
+    rdfs:label "is top concept in scheme"@en ;
+.
+
+<https://linked.data.gov.au/def/reg-statuses/stable>
+    rdfs:label "Stable" ;
+.
+
+schema:Organization
+    rdfs:label "Organization" ;
+    schema:description "An organization such as a school, NGO, corporation, club, etc." ;
+.
+
+schema:name
+    rdfs:label "name" ;
+    schema:description "The name of the item." ;
+.
+
+schema:url
+    rdfs:label "url" ;
+    schema:description "URL of the item." ;
+.

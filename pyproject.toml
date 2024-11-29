@@ -11,6 +11,7 @@ python = "^3.12"
 rdflib = "^7.0.0"
 
 sparqlwrapper = "^2.0.0"
+html5rdf = "^1.2.1"
 [tool.poetry.group.dev.dependencies]
 black = "^23.3.0"
 pytest = "^8.3.3"
