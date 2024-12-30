@@ -15,7 +15,7 @@ from SPARQLWrapper.SPARQLExceptions import EndPointNotFound, Unauthorized
 
 from labelify.utils import get_namespace, list_of_predicates_to_alternates
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 
 def get_labelling_predicates(l_arg):
@@ -73,7 +73,7 @@ def find_missing_labels(
 
     if evaluate_context_nodes and context_graph is None:
         raise ValueError(
-            "You have indicated context nodes sould be included in label search by setting evaluate_context_nodes"
+            "You have indicated context nodes should be included in label search by setting evaluate_context_nodes"
             "to True but context_graph is None"
         )
 
@@ -108,18 +108,20 @@ def find_missing_labels(
 
     nodes = set()
     for n in call_method(target_graph, node_type):
-        if not isinstance(n, URIRef):
-            continue
-
-        if graph.value(n, list_of_predicates_to_alternates(labelling_predicates)):
-            continue
-
-        if context_graph is not None:
-            if context_graph.value(
-                n, list_of_predicates_to_alternates(labelling_predicates)
-            ):
+        # ignore rdf:type as it's problematic to document for its prefix is never bound
+        if n != RDF.type:
+            if not isinstance(n, URIRef):
                 continue
-        nodes.add(n)
+
+            if graph.value(n, list_of_predicates_to_alternates(labelling_predicates)):
+                continue
+
+            if context_graph is not None:
+                if context_graph.value(
+                    n, list_of_predicates_to_alternates(labelling_predicates)
+                ):
+                    continue
+            nodes.add(n)
     return nodes
 
 

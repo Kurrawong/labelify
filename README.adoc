@@ -56,7 +56,7 @@ http://schema.org/name
 Find all the missing labels in the subgraph `http://example-graph`
 at the sparql endpoint `http://mytriplestore/sparql` using basic HTTP auth to connect.
 
-_labelify will prompt for the password or it can be provided with the `--password` flag if you dont
+labelify will prompt for the password or it can be provided with the `--password` flag if you dont
 mind it being saved to the shell history.
 
 [source,shell]
