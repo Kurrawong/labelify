@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "labelify"
-version = "0.2.0"
+version = "0.3.1"
 description = "Analyse an RDF graph to find URI's without human readable labels."
 authors = ["Nicholas Car <nick@kurrawong.ai>"]
 license = "BSD-3-Clause"
