@@ -19,12 +19,7 @@ __version__ = "0.2.1"
 
 
 def get_labelling_predicates(l_arg):
-    labels = [
-        SKOS.prefLabel,
-        DCTERMS.title,
-        RDFS.label,
-        SDO.name,
-    ]
+    labels = []
     if Path(l_arg).is_file():
         labels.extend([URIRef(label.strip()) for label in open(l_arg).readlines()])
     elif "," in l_arg:
@@ -430,7 +425,7 @@ def cli(args=None):
         g = get_triples_from_sparql_endpoint(args)
     elif args.input.is_dir():
         g = Graph()
-        for file in args.input.glob("*.ttl"):
+        for file in args.input.glob("**/*.ttl"):
             g.parse(file)
     else:
         g = Graph().parse(args.input)
