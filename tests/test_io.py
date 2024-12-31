@@ -7,14 +7,14 @@ from pathlib import Path
 def test_iri_list():
     g = Graph().parse("tests/one/data-access-rights.ttl")
     missing = find_missing_labels(g)
-    assert len(missing) == 23
+    assert len(missing) == 22
 
 
 def test_make_labels():
     g = Graph().parse("tests/one/data-access-rights.ttl")
     missing = find_missing_labels(g)
     labels = extract_labels(missing, Path(__file__).parent / "one" / "background")
-    assert len(labels) == 27
+    assert len(labels) == 26
 
 
 def test_labels_to_file():

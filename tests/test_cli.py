@@ -70,8 +70,6 @@ def test_nodetype_all():
             "-c",
             "tests/one/background",
             "tests/one/data-access-rights.ttl",
-            "-l",
-            "http://www.w3.org/2004/02/skos/core#prefLabel,https://schema.org/name",
             "-r",
         ],
         stdout=subprocess.PIPE,

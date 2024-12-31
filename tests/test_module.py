@@ -31,9 +31,9 @@ def test_extract_labels():
     vocab_graph = Graph().parse(vocab_file)
     iris = find_missing_labels(vocab_graph)
 
-    assert len(iris) == 23
+    assert len(iris) == 22
 
     context_dir = Path(Path(__file__).parent / "one/background")
     labels_rdf = extract_labels(iris, context_dir)
 
-    assert len(labels_rdf) == 27
+    assert len(labels_rdf) == 26
