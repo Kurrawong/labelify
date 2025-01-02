@@ -22,8 +22,9 @@ def test_with_cg():
 def test_without_cg():
     g = Graph().parse("tests/one/data-access-rights.ttl")
 
-    missing = find_missing_labels(g, None, [SKOS.prefLabel, RDFS.label], "objects")
-    assert len(missing) == 7
+    missing = find_missing_labels(g, None, [SKOS.prefLabel, RDFS.label])
+    print(missing)
+    assert len(missing) == 23
 
 
 def test_extract_labels():
@@ -46,33 +47,33 @@ def test_extract_with_context_sparql_endpoint():
         assert response.getcode() == 200
 
     iris = [
-        "https://example.com/demo-vocabs-catalogue" ,
-        "http://purl.org/dc/terms/hasPart" ,
-        "https://schema.org/image" ,
-        "http://purl.org/linked-data/registry#status" ,
-        "https://olis.dev/isAliasFor" ,
-        "http://www.w3.org/2004/02/skos/core#notation" ,
-        "https://schema.org/name" ,
-        "http://www.w3.org/2004/02/skos/core#hasTopConcept" ,
-        "https://schema.org/description" ,
-        "http://www.w3.org/2004/02/skos/core#definition" ,
-        "http://www.w3.org/2004/02/skos/core#ConceptScheme" ,
-        "https://schema.org/creator" ,
-        "https://schema.org/dateModified" ,
-        "https://olis.dev/VirtualGraph" ,
-        "https://schema.org/mathExpression" ,
-        "http://www.w3.org/2004/02/skos/core#historyNote" ,
-        "http://www.w3.org/2004/02/skos/core#inScheme" ,
-        "https://schema.org/codeRepository" ,
-        "https://schema.org/publisher" ,
-        "http://www.w3.org/2004/02/skos/core#prefLabel" ,
-        "https://kurrawong.ai" ,
-        "http://www.w3.org/2000/01/rdf-schema#label" ,
-        "https://linked.data.gov.au/def/reg-statuses/experimental" ,
-        "https://schema.org/dateCreated" ,
-        "http://www.w3.org/2004/02/skos/core#Concept" ,
-        "http://www.w3.org/ns/dcat#Catalog" ,
-        "http://www.w3.org/2004/02/skos/core#altLabel" ,
+        "https://example.com/demo-vocabs-catalogue",
+        "http://purl.org/dc/terms/hasPart",
+        "https://schema.org/image",
+        "http://purl.org/linked-data/registry#status",
+        "https://olis.dev/isAliasFor",
+        "http://www.w3.org/2004/02/skos/core#notation",
+        "https://schema.org/name",
+        "http://www.w3.org/2004/02/skos/core#hasTopConcept",
+        "https://schema.org/description",
+        "http://www.w3.org/2004/02/skos/core#definition",
+        "http://www.w3.org/2004/02/skos/core#ConceptScheme",
+        "https://schema.org/creator",
+        "https://schema.org/dateModified",
+        "https://olis.dev/VirtualGraph",
+        "https://schema.org/mathExpression",
+        "http://www.w3.org/2004/02/skos/core#historyNote",
+        "http://www.w3.org/2004/02/skos/core#inScheme",
+        "https://schema.org/codeRepository",
+        "https://schema.org/publisher",
+        "http://www.w3.org/2004/02/skos/core#prefLabel",
+        "https://kurrawong.ai",
+        "http://www.w3.org/2000/01/rdf-schema#label",
+        "https://linked.data.gov.au/def/reg-statuses/experimental",
+        "https://schema.org/dateCreated",
+        "http://www.w3.org/2004/02/skos/core#Concept",
+        "http://www.w3.org/ns/dcat#Catalog",
+        "http://www.w3.org/2004/02/skos/core#altLabel",
     ]
 
     assert len(extract_labels(iris, "http://localhost:3030/ds/query")) == 54

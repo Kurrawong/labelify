@@ -1,24 +1,22 @@
 import argparse
+import importlib.metadata
 import sys
 from argparse import ArgumentTypeError
 from getpass import getpass
 from pathlib import Path
+from typing import List, Optional
 from typing import Literal as TLiteral
-from typing import Optional, List
 from urllib.error import URLError
-from urllib.parse import ParseResult, urlunparse
+from urllib.parse import ParseResult, urlparse, urlunparse
 
 import kurra.utils
+from kurra.utils import guess_format_from_data, load_graph
 from rdflib import Graph, URIRef
 from rdflib.namespace import DCTERMS, RDF, RDFS, SDO, SKOS
-from SPARQLWrapper import JSONLD, SPARQLWrapper, TURTLE
+from SPARQLWrapper import JSONLD, TURTLE, SPARQLWrapper
 from SPARQLWrapper.SPARQLExceptions import EndPointNotFound, Unauthorized
 
 from labelify.utils import get_namespace, list_of_predicates_to_alternates
-from kurra.utils import load_graph, guess_format_from_data
-from urllib.parse import urlparse
-
-import importlib.metadata
 
 __version__ = importlib.metadata.version(__package__)
 
@@ -52,7 +50,6 @@ def find_missing_labels(
         SDO.name,
         SKOS.prefLabel,
     ],
-    node_type: TLiteral["subjects", "predicates", "objects", "all"] = "all",
     evaluate_context_nodes: bool = False,
 ) -> set[URIRef]:
     """Gets all the nodes missing labels
@@ -60,17 +57,10 @@ def find_missing_labels(
     :param target: the graph to look for nodes in
     :param context: the additional context to search in for labels: an RDF file, folder containing RDF files or a SPARQL Endpoint
     :param labelling_predicates: the IRIs of the label predicates to look for. Default is dcterms:title, rdfs:label, schema:name, skos:prefLabel
-    :param node_type: S, P, O or all of them
     :param evaluate_context_nodes: whether (True) or not (False) to include Ss, Ps, & Os or all of the nodes in the
     context_graph when looking for nodes missing labels
     :return:
     """
-    allowed_node_types = ["subjects", "predicates", "objects", "all"]
-    if node_type not in allowed_node_types:
-        raise ValueError(
-            f"The node_type for the function get_nodes_missing_labels must be one of {', '.join(allowed_node_types)} but instead got {node_type}"
-        )
-
     if evaluate_context_nodes and context is None:
         raise ValueError(
             "You have indicated context nodes should be included in label search by setting evaluate_context_nodes"
@@ -82,32 +72,12 @@ def find_missing_labels(
     if evaluate_context_nodes:
         target += context
 
-    if node_type == "all":
-        s = find_missing_labels(
-            target,
-            context,
-            labelling_predicates,
-            "subjects",
-            evaluate_context_nodes,
-        )
-        p = find_missing_labels(
-            target,
-            context,
-            labelling_predicates,
-            "predicates",
-            evaluate_context_nodes,
-        )
-        o = find_missing_labels(
-            target,
-            context,
-            labelling_predicates,
-            "objects",
-            evaluate_context_nodes,
-        )
-        return s.union(p).union(o)
-
-    nodes = set()
-    for n in call_method(target, node_type):
+    s = set(target.subjects())
+    p = set(target.predicates())
+    o = set(target.objects())
+    nodes = set(s).union(p).union(o)
+    nodes_missing = set()
+    for n in nodes:
         # ignore rdf:type as it's problematic to document for its prefix is never bound
         if n != RDF.type:
             if not isinstance(n, URIRef):
@@ -121,8 +91,8 @@ def find_missing_labels(
                     n, list_of_predicates_to_alternates(labelling_predicates)
                 ):
                     continue
-            nodes.add(n)
-    return nodes
+            nodes_missing.add(n)
+    return nodes_missing
 
 
 def get_triples_from_sparql_endpoint(args: argparse.Namespace) -> Graph:
@@ -179,11 +149,11 @@ def get_triples_from_sparql_endpoint(args: argparse.Namespace) -> Graph:
 
 
 def extract_labels(
-        iris: [],
-        labels_source: Path | ParseResult | Graph | str,
-        timeout: Optional[int] = 20,
-        username: Optional[str] = None,
-        password: Optional[str] = None
+    iris: [],
+    labels_source: Path | ParseResult | Graph | str,
+    timeout: Optional[int] = 20,
+    username: Optional[str] = None,
+    password: Optional[str] = None,
 ) -> Graph:
     def query_sparql_endpoint(sparql_endpoint: str | ParseResult, query: str):
         if isinstance(sparql_endpoint, str):
@@ -200,8 +170,8 @@ def extract_labels(
         try:
             return Graph().parse(data=sparql.queryAndConvert())
         except (URLError, Unauthorized, EndPointNotFound, TimeoutError) as e:
-                print(e)
-                exit(1)
+            print(e)
+            exit(1)
 
     # make the query
     q = """
@@ -247,10 +217,14 @@ def extract_labels(
                 }
                 OPTIONAL { ?iri rdfs:seeAlso ?seeAlso }                
             }
-            """.replace("XXXX", "".join(["<" + x.strip() + ">\n                " for x in iris]).strip())
+            """.replace(
+        "XXXX", "".join(["<" + x.strip() + ">\n                " for x in iris]).strip()
+    )
 
     # make the graph from the given source
-    if (isinstance(labels_source, str) and labels_source.startswith("http")) or  isinstance(labels_source, ParseResult):
+    if (
+        isinstance(labels_source, str) and labels_source.startswith("http")
+    ) or isinstance(labels_source, ParseResult):
         return query_sparql_endpoint(labels_source, q)
 
     if isinstance(labels_source, Graph):
@@ -272,8 +246,6 @@ def extract_labels(
 
     return return_g
 
-
-
     return return_g
 
 
@@ -281,7 +253,8 @@ def output_labels(iris: Path | List, labels_source: Path, dest: Path = None):
     if isinstance(iris, Path):
         if iris.suffix != ".txt":
             raise argparse.ArgumentTypeError(
-                "When specifying --extract, you must profile a .txt file containing IRIs without labels, one per line")
+                "When specifying --extract, you must profile a .txt file containing IRIs without labels, one per line"
+            )
 
         iris = iris.read_text().splitlines()
 
@@ -353,8 +326,10 @@ def setup_cli_parser(args=None):
         "-l",
         "--labels",
         help="A list of predicates (IRIs) to looks for that indicate labels. A comma-delimited list may be supplied or "
-             "the path of a file containing labelling IRIs, one per line may be supplied. Default is skos:prefLabel, dcterms:title, rdfs:label, schema:name=",
-        default=",".join([str(x) for x in [SKOS.prefLabel, DCTERMS.title, RDFS.label, SDO.name]]),
+        "the path of a file containing labelling IRIs, one per line may be supplied. Default is skos:prefLabel, dcterms:title, rdfs:label, schema:name=",
+        default=",".join(
+            [str(x) for x in [SKOS.prefLabel, DCTERMS.title, RDFS.label, SDO.name]]
+        ),
         type=str,
     )
 
@@ -502,11 +477,15 @@ def cli(args=None):
 
     if args.output:
         if not args.raw:
-            raise ArgumentTypeError("If -o/-output is specified, -r/raw must also be specified")
+            raise ArgumentTypeError(
+                "If -o/-output is specified, -r/raw must also be specified"
+            )
         else:
             o = Path(args.output)
             if o.suffix != ".txt":
-                raise ArgumentTypeError("If specifying -o/--output, you must indicate a file with the file ending .txt")
+                raise ArgumentTypeError(
+                    "If specifying -o/--output, you must indicate a file with the file ending .txt"
+                )
             else:
                 if o.is_file():
                     # the file already exists, so add to it, deduplicatively

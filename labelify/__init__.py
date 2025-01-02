@@ -1,1 +1,1 @@
-from .__main__ import cli, find_missing_labels, extract_labels
+from .__main__ import cli, extract_labels, find_missing_labels

@@ -4,6 +4,7 @@ from labelify import find_missing_labels, extract_labels
 
 from pathlib import Path
 
+
 def test_iri_list():
     g = Graph().parse("tests/one/data-access-rights.ttl")
     missing = find_missing_labels(g)
