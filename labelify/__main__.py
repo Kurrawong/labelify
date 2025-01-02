@@ -4,16 +4,19 @@ from argparse import ArgumentTypeError
 from getpass import getpass
 from pathlib import Path
 from typing import Literal as TLiteral
-from typing import Optional, Union, List
+from typing import Optional, List
 from urllib.error import URLError
-from urllib.parse import ParseResult, urlparse, urlunparse
+from urllib.parse import ParseResult, urlunparse
 
+import kurra.utils
 from rdflib import Graph, URIRef
 from rdflib.namespace import DCTERMS, RDF, RDFS, SDO, SKOS
 from SPARQLWrapper import JSONLD, SPARQLWrapper, TURTLE
 from SPARQLWrapper.SPARQLExceptions import EndPointNotFound, Unauthorized
 
 from labelify.utils import get_namespace, list_of_predicates_to_alternates
+from kurra.utils import load_graph, guess_format_from_data
+from urllib.parse import urlparse
 
 import importlib.metadata
 
@@ -41,9 +44,9 @@ def call_method(o, name):
 
 
 def find_missing_labels(
-    target: Graph,
-    context: Optional[Graph] = None,
-    labelling_predicates: list[URIRef] = [
+    target: Graph | str | Path,
+    context: Path | ParseResult | Graph | str = None,
+    labelling_predicates: [URIRef] = [
         DCTERMS.title,
         RDFS.label,
         SDO.name,
@@ -74,10 +77,10 @@ def find_missing_labels(
             "to True but context_graph is None"
         )
 
+    target = load_graph(target)
+
     if evaluate_context_nodes:
-        target_graph = target + context
-    else:
-        target_graph = target
+        target += context
 
     if node_type == "all":
         s = find_missing_labels(
@@ -104,7 +107,7 @@ def find_missing_labels(
         return s.union(p).union(o)
 
     nodes = set()
-    for n in call_method(target_graph, node_type):
+    for n in call_method(target, node_type):
         # ignore rdf:type as it's problematic to document for its prefix is never bound
         if n != RDF.type:
             if not isinstance(n, URIRef):
@@ -173,6 +176,126 @@ def get_triples_from_sparql_endpoint(args: argparse.Namespace) -> Graph:
                 flush=True,
             )
     return g
+
+
+def extract_labels(
+        iris: [],
+        labels_source: Path | ParseResult | Graph | str,
+        timeout: Optional[int] = 20,
+        username: Optional[str] = None,
+        password: Optional[str] = None
+) -> Graph:
+    def query_sparql_endpoint(sparql_endpoint: str | ParseResult, query: str):
+        if isinstance(sparql_endpoint, str):
+            sparql_endpoint = urlparse(sparql_endpoint)
+
+        sparql = SPARQLWrapper(sparql_endpoint.geturl())
+        sparql.setReturnFormat(TURTLE)
+        sparql.setTimeout(timeout)
+        if username and not password:
+            sparql.setCredentials(user=username, passwd=getpass("password:"))
+        elif username and password:
+            sparql.setCredentials(user=username, passwd=password)
+        sparql.setQuery(query)
+        try:
+            return Graph().parse(data=sparql.queryAndConvert())
+        except (URLError, Unauthorized, EndPointNotFound, TimeoutError) as e:
+                print(e)
+                exit(1)
+
+    # make the query
+    q = """
+            PREFIX dcterms: <http://purl.org/dc/terms/>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX schema: <https://schema.org/>
+            PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+
+            CONSTRUCT {
+                ?iri 
+                    schema:name ?label ;
+                    schema:description ?desc ;
+                    schema:url ?seeAlso ;
+                .
+            }
+            WHERE {
+                VALUES ?t {
+                    skos:prefLabel
+                    dcterms:title                        
+                    rdfs:label
+                    schema:name
+                }
+
+                VALUES ?iri {
+                    XXXX
+                }
+
+                ?iri ?t ?label .
+
+                FILTER (lang(?label) = "en" || lang(?label) = "")
+
+                OPTIONAL {
+                    VALUES ?dt {
+                        skos:definition
+                        dcterms:description                        
+                        rdfs:comment
+                        schema:description
+                    }
+
+                    ?iri ?dt ?desc .
+
+                    FILTER (lang(?desc) = "en" || lang(?desc) = "")
+                }
+                OPTIONAL { ?iri rdfs:seeAlso ?seeAlso }                
+            }
+            """.replace("XXXX", "".join(["<" + x.strip() + ">\n                " for x in iris]).strip())
+
+    # make the graph from the given source
+    if (isinstance(labels_source, str) and labels_source.startswith("http")) or  isinstance(labels_source, ParseResult):
+        return query_sparql_endpoint(labels_source, q)
+
+    if isinstance(labels_source, Graph):
+        g = labels_source
+    elif isinstance(labels_source, str):
+        g = Graph().parse(labels_source, guess_format_from_data(labels_source))
+    elif isinstance(labels_source, Path):
+        if labels_source.is_file():
+            g = Graph().parse(labels_source)
+        elif labels_source.is_dir():
+            g = Graph()
+            for f in labels_source.glob("**/*"):
+                g.parse(f)
+
+    # query the graph
+    return_g = Graph()
+    for r in g.query(q):
+        return_g.add(r)
+
+    return return_g
+
+
+
+    return return_g
+
+
+def output_labels(iris: Path | List, labels_source: Path, dest: Path = None):
+    if isinstance(iris, Path):
+        if iris.suffix != ".txt":
+            raise argparse.ArgumentTypeError(
+                "When specifying --extract, you must profile a .txt file containing IRIs without labels, one per line")
+
+        iris = iris.read_text().splitlines()
+
+    res = extract_labels(iris, labels_source)
+    res.bind("rdf", RDF)
+    if dest is not None:
+        o = Path(dest)
+        if o.is_file():
+            # the RDF file exists, so add to it
+            (res + Graph().parse(o)).serialize(format="longturtle", destination=o)
+        else:
+            res.serialize(format="longturtle", destination=o)
+    else:
+        print(res.serialize(format="longturtle"))
 
 
 def setup_cli_parser(args=None):
@@ -314,103 +437,6 @@ def setup_cli_parser(args=None):
     )
 
     return parser.parse_args(args)
-
-
-def extract_labels(
-        iris: [],
-        p: Union[Path, ParseResult],
-        timeout: Optional[int] = None,
-        username: Optional[str] = None,
-        password: Optional[str] = None
-) -> Graph:
-
-    q = """
-        PREFIX dcterms: <http://purl.org/dc/terms/>
-        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-        PREFIX schema: <https://schema.org/>
-        PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-
-        CONSTRUCT {
-            ?iri 
-                rdfs:label ?label ;
-                schema:description ?desc ;
-                rdfs:seeAlso ?seeAlso ;
-            .
-        }
-        WHERE {
-            VALUES ?t {
-                skos:prefLabel
-                dcterms:title                        
-                rdfs:label
-                schema:name
-            }
-
-            VALUES ?iri {
-                XXXX
-            }
-
-            ?iri ?t ?label .
-            OPTIONAL {
-                VALUES ?dt {
-                    skos:definition
-                    dcterms:description                        
-                    rdfs:comment
-                    schema:description
-                }
-
-                ?iri ?dt ?desc 
-            }
-            OPTIONAL { ?iri rdfs:seeAlso ?seeAlso }                
-        }
-        """.replace("XXXX", "".join(["<" + x.strip() + ">\n                " for x in iris]).strip())
-
-    if isinstance(p, ParseResult):
-        sparql = SPARQLWrapper(p.geturl())
-        sparql.setReturnFormat(TURTLE)
-        sparql.setTimeout(timeout)
-        if username and not password:
-            sparql.setCredentials(user=username, passwd=getpass("password:"))
-        elif username and password:
-            sparql.setCredentials(user=username, passwd=password)
-        sparql.setQuery(q)
-        try:
-            g = Graph().parse(data=sparql.queryAndConvert())
-        except (URLError, Unauthorized, EndPointNotFound, TimeoutError) as e:
-            print(e)
-            exit(1)
-    elif p.is_file():
-        g = Graph().parse(p)
-    elif p.is_dir():
-        g = Graph()
-        for f in p.glob("**/*"):
-            g.parse(f)
-
-    return_g = Graph()
-    for r in g.query(q):
-        return_g.add(r)
-
-    return return_g
-
-
-def output_labels(iris: Path | List, labels_source: Path, dest: Path = None):
-    if isinstance(iris, Path):
-        if iris.suffix != ".txt":
-            raise argparse.ArgumentTypeError(
-                "When specifying --extract, you must profile a .txt file containing IRIs without labels, one per line")
-
-        iris = iris.read_text().splitlines()
-
-    res = extract_labels(iris, labels_source)
-    res.bind("rdf", RDF)
-    if dest:
-        o = Path(dest)
-        if o.is_file():
-            # the RDF file exists, so add to it
-            (res + Graph().parse(o)).serialize(format="longturtle", destination=o)
-        else:
-            res.serialize(format="longturtle", destination=o)
-    else:
-        print(res.serialize(format="longturtle"))
 
 
 def cli(args=None):

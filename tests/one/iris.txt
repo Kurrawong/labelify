@@ -5,7 +5,6 @@ http://purl.org/dc/terms/provenance
 http://purl.org/dc/terms/publisher
 http://purl.org/dc/terms/source
 http://purl.org/linked-data/registry#status
-http://www.w3.org/1999/02/22-rdf-syntax-ns#type
 http://www.w3.org/2002/07/owl#Ontology
 http://www.w3.org/2004/02/skos/core#Collection
 http://www.w3.org/2004/02/skos/core#Concept

@@ -1,102 +1,96 @@
 PREFIX dcterms: <http://purl.org/dc/terms/>
 PREFIX owl: <http://www.w3.org/2002/07/owl#>
-PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX schema: <https://schema.org/>
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 
 dcterms:created
-    rdfs:label "Date Created"@en ;
+    schema:name "Date Created"@en ;
 .
 
 dcterms:creator
-    rdfs:label "Creator"@en ;
+    schema:name "Creator"@en ;
 .
 
 dcterms:modified
-    rdfs:label "Date Modified"@en ;
+    schema:name "Date Modified"@en ;
 .
 
 dcterms:provenance
-    rdfs:label "Provenance"@en ;
+    schema:name "Provenance"@en ;
 .
 
 dcterms:publisher
-    rdfs:label "Publisher"@en ;
+    schema:name "Publisher"@en ;
 .
 
 dcterms:source
-    rdfs:label "Source"@en ;
+    schema:name "Source"@en ;
 .
 
 <http://purl.org/linked-data/registry#status>
-    rdfs:label "status" ;
-.
-
-rdf:type
-    rdfs:label "type" ;
+    schema:name "status" ;
 .
 
 owl:Ontology
-    rdfs:label "Ontology" ;
+    schema:name "Ontology" ;
     schema:description "The class of ontologies" ;
 .
 
 skos:Collection
-    rdfs:label "Collection"@en ;
+    schema:name "Collection"@en ;
 .
 
 skos:Concept
-    rdfs:label "Concept"@en ;
+    schema:name "Concept"@en ;
 .
 
 skos:ConceptScheme
-    rdfs:label "Concept Scheme"@en ;
+    schema:name "Concept Scheme"@en ;
 .
 
 skos:altLabel
-    rdfs:label "alternative label"@en ;
+    schema:name "alternative label"@en ;
 .
 
 skos:definition
-    rdfs:label "definition"@en ;
+    schema:name "definition"@en ;
 .
 
 skos:hasTopConcept
-    rdfs:label "has top concept"@en ;
+    schema:name "has top concept"@en ;
 .
 
 skos:inScheme
-    rdfs:label "is in scheme"@en ;
+    schema:name "is in scheme"@en ;
 .
 
 skos:member
-    rdfs:label "has member"@en ;
+    schema:name "has member"@en ;
 .
 
 skos:prefLabel
-    rdfs:label "preferred label"@en ;
+    schema:name "preferred label"@en ;
 .
 
 skos:topConceptOf
-    rdfs:label "is top concept in scheme"@en ;
+    schema:name "is top concept in scheme"@en ;
 .
 
 <https://linked.data.gov.au/def/reg-statuses/stable>
-    rdfs:label "Stable" ;
+    schema:name "Stable" ;
 .
 
 schema:Organization
-    rdfs:label "Organization" ;
+    schema:name "Organization" ;
     schema:description "An organization such as a school, NGO, corporation, club, etc." ;
 .
 
 schema:name
-    rdfs:label "name" ;
+    schema:name "name" ;
     schema:description "The name of the item." ;
 .
 
 schema:url
-    rdfs:label "url" ;
+    schema:name "url" ;
     schema:description "URL of the item." ;
 .
