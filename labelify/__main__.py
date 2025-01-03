@@ -9,8 +9,8 @@ from typing import Literal as TLiteral
 from urllib.error import URLError
 from urllib.parse import ParseResult, urlparse, urlunparse
 
-import kurra.utils
 from kurra.utils import guess_format_from_data, load_graph
+from kurra.fuseki import query
 from rdflib import Graph, URIRef
 from rdflib.namespace import DCTERMS, RDF, RDFS, SDO, SKOS
 from SPARQLWrapper import JSONLD, TURTLE, SPARQLWrapper
@@ -80,18 +80,65 @@ def find_missing_labels(
     for n in nodes:
         # ignore rdf:type as it's problematic to document for its prefix is never bound
         if n != RDF.type:
+            # ignore Blank Nodes
             if not isinstance(n, URIRef):
                 continue
 
+            # ignore nodes that have a value for any of the labelling predicates
             if target.value(n, list_of_predicates_to_alternates(labelling_predicates)):
                 continue
 
-            if context is not None:
+            nodes_missing.add(n)
+
+    # ignore any node that is labelled in the context
+    if context is not None:
+        if isinstance(context, ParseResult) or (isinstance(context, str) and context.startswith("http")):
+            if isinstance(context, ParseResult):
+                sparql_endpoint = context.geturl()
+            else:
+                sparql_endpoint = context
+
+            # make missing list into a query insert
+            q = """
+                PREFIX dcterms: <http://purl.org/dc/terms/>
+                PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+                PREFIX schema: <https://schema.org/>
+                PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+                
+                SELECT DISTINCT ?iri
+                WHERE {
+                    VALUES ?iri {
+                        XXXX
+                    }
+                    VALUES ?t {
+                        skos:prefLabel
+                        dcterms:title                        
+                        rdfs:label
+                        schema:name
+                    }
+                    
+                    ?iri ?t ?label .
+                }
+                """.replace(
+                "XXXX", "".join(["<" + x.strip() + ">\n                        " for x in nodes_missing]).strip()
+            )
+            r = query(sparql_endpoint, q, return_python=True, return_bindings_only=True)
+            for row in r:
+                nodes_missing.remove(URIRef(row["iri"]["value"]))
+        elif isinstance(context, Graph) or isinstance(context, Path) or isinstance(context, str):
+            if isinstance(context, Graph):
+                pass
+            elif isinstance(context, Path) or isinstance(context, str):
+                context = load_graph(context)
+
+            still_missing = nodes_missing.copy()
+            for n in nodes_missing:
                 if context.value(
                     n, list_of_predicates_to_alternates(labelling_predicates)
                 ):
-                    continue
-            nodes_missing.add(n)
+                    still_missing.remove(n)
+            nodes_missing = still_missing
+
     return nodes_missing
 
 
@@ -440,24 +487,24 @@ def cli(args=None):
     if args.supress == "true":
         exit()
 
-    if args.context is not None:
-        cg = Graph()
-        if not args.raw:
-            print("Loading given context")
-        if args.context.is_file():
-            if not args.raw:
-                print(f"Loading {args.context}")
-            cg.parse(args.context)
-        if args.context.is_dir():
-            for f in args.context.glob("*.ttl"):
-                if not args.raw:
-                    print(f"Loading {f}")
-                cg.parse(f)
-        if not args.raw:
-            print("\n")
-    else:
-        if not args.raw:
-            print("No additional context supplied\n")
+    # if args.context is not None:
+    #     cg = Graph()
+    #     if not args.raw:
+    #         print("Loading given context")
+    #     if args.context.is_file():
+    #         if not args.raw:
+    #             print(f"Loading {args.context}")
+    #         cg.parse(args.context)
+    #     if args.context.is_dir():
+    #         for f in args.context.glob("*.ttl"):
+    #             if not args.raw:
+    #                 print(f"Loading {f}")
+    #             cg.parse(f)
+    #     if not args.raw:
+    #         print("\n")
+    # else:
+    #     if not args.raw:
+    #         print("No additional context supplied\n")
 
     labelling_predicates = get_labelling_predicates(args.labels)
     if not args.raw:
@@ -469,9 +516,8 @@ def cli(args=None):
 
     nml = find_missing_labels(
         g,
-        cg,
+        args.context,
         labelling_predicates,
-        args.nodetype,
         True if args.evaluate == "true" else False,
     )
 

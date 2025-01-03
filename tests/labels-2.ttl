@@ -1,0 +1,4 @@
+PREFIX schema: <https://schema.org/>
+
+<https://prez.dev/ManifestResourceRoles/CatalogueData> schema:name "Catalogue Data" .
+<https://prez.dev/ManifestResourceRoles/ResourceData> schema:name "Resource Data" .

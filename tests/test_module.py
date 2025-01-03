@@ -6,7 +6,15 @@ from pathlib import Path
 import urllib.request
 
 
-def test_with_cg():
+def test_iris_without_context():
+    g = Graph().parse("tests/one/data-access-rights.ttl")
+
+    missing = find_missing_labels(g, None, [SKOS.prefLabel, RDFS.label])
+    print(missing)
+    assert len(missing) == 23
+
+
+def test_iris_with_context_folder():
     g = Graph().parse("tests/one/data-access-rights.ttl")
     cg = Graph()
     for c in glob.glob("tests/one/background/*.ttl"):
@@ -19,12 +27,35 @@ def test_with_cg():
     assert next(iter(missing)) == URIRef("https://linked.data.gov.au/org/gsq")
 
 
-def test_without_cg():
-    g = Graph().parse("tests/one/data-access-rights.ttl")
+def test_iris_with_context_file():
+    missing = find_missing_labels(
+        Path(__file__).parent / "manifest.ttl",
+    )
 
-    missing = find_missing_labels(g, None, [SKOS.prefLabel, RDFS.label])
-    print(missing)
-    assert len(missing) == 23
+    assert len(missing) == 9
+
+    missing = find_missing_labels(
+        Path(__file__).parent / "manifest.ttl",
+        context=Path(__file__).parent / "labels-2.ttl",
+    )
+
+    # reduces the above 9 by 2 to 7
+    assert len(missing) == 7
+
+
+def test_iris_with_context_sparql():
+    missing = find_missing_labels(
+        Path(__file__).parent / "manifest.ttl",
+    )
+
+    assert len(missing) == 9
+
+    missing = find_missing_labels(
+        Path(__file__).parent / "manifest.ttl",
+        context="http://localhost:3030/ds/query"
+    )
+
+    assert len(missing) == 4
 
 
 def test_extract_labels():
