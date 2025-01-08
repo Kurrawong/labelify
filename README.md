@@ -159,6 +159,10 @@ You can then use labelify from the command line
 
     poetry run pytest
 
+Several of the tests require a Fuseki triplestore instance to be available, so you need **Docker** running as the tests 
+will attempt to use [testcontainers](https://testcontainers.com/guides/getting-started-with-testcontainers-for-python/) 
+to create throwaway containers for this purpose.
+
 ### Formatting the codebase
 
     poetry run black . && poetry run ruff check --fix labelify/
