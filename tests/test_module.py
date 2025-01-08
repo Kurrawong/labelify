@@ -4,6 +4,7 @@ from rdflib.namespace import RDFS, SKOS
 import glob
 from pathlib import Path
 import urllib.request
+from kurra.fuseki import upload, query
 
 
 def test_iris_without_context():
@@ -43,19 +44,52 @@ def test_iris_with_context_file():
     assert len(missing) == 7
 
 
-def test_iris_with_context_sparql():
+def test_iris_with_context_sparql(fuseki_container):
+    port = fuseki_container.get_exposed_port(3030)
+    SPARQL_ENDPOINT = f"http://localhost:{port}/ds"
     missing = find_missing_labels(
         Path(__file__).parent / "manifest.ttl",
     )
 
     assert len(missing) == 9
 
-    missing = find_missing_labels(
-        Path(__file__).parent / "manifest.ttl",
-        context="http://localhost:3030/ds/query"
+    # add some labels to the SPARQL store, should see a reduction in IRIs missing labels
+    five_labels = """
+    PREFIX schema: <https://schema.org/>
+    
+    schema:name
+        schema:name "name" ;
+    .
+    
+    schema:description
+        schema:name "description" ;
+    .
+    
+    <https://prez.dev/ManifestResourceRoles/CatalogueData> 
+        schema:name "Catalogue Data" 
+    .
+    
+    <https://prez.dev/ManifestResourceRoles/ResourceData> 
+        schema:name "Resource Data" 
+    .
+    
+    <http://www.w3.org/ns/dx/prof/hasResource>
+        schema:name "has resource" 
+    .
+    """
+
+    upload(
+        SPARQL_ENDPOINT,
+        five_labels,
+        graph_name="http://whatever"
     )
 
-    assert len(missing) == 4
+    missing2 = find_missing_labels(
+        Path(__file__).parent / "manifest.ttl",
+        context=SPARQL_ENDPOINT
+    )
+
+    assert len(missing2) == 4
 
 
 def test_extract_labels():
@@ -71,11 +105,8 @@ def test_extract_labels():
     assert len(labels_rdf) == 26
 
 
-def test_extract_with_context_sparql_endpoint():
-    # SPARQL endpoint must be online
-    # delivering Semantic Background
-    with urllib.request.urlopen("http://localhost:3030") as response:
-        assert response.getcode() == 200
+def test_extract_with_context_sparql_endpoint(fuseki_container):
+    SPARQL_ENDPOINT = f"http://localhost:{fuseki_container.get_exposed_port(3030)}/ds"
 
     iris = [
         "https://example.com/demo-vocabs-catalogue",
@@ -107,4 +138,41 @@ def test_extract_with_context_sparql_endpoint():
         "http://www.w3.org/2004/02/skos/core#altLabel",
     ]
 
-    assert len(extract_labels(iris, "http://localhost:3030/ds/query")) == 54
+    # add some labels - only 3 relevant
+    some_labels = """
+    PREFIX schema: <https://schema.org/>
+
+    schema:name
+        schema:name "name" ;
+    .
+
+    schema:description
+        schema:name "description" ;
+    .
+
+    <https://prez.dev/ManifestResourceRoles/CatalogueData> 
+        schema:name "Catalogue Data" 
+    .
+
+    <https://prez.dev/ManifestResourceRoles/ResourceData> 
+        schema:name "Resource Data" 
+    .
+
+    <http://www.w3.org/ns/dx/prof/hasResource>
+        schema:name "has resource" 
+    .
+    
+    <http://purl.org/dc/terms/hasPart>
+        schema:name "has part" 
+    .    
+    """
+
+    upload(
+        SPARQL_ENDPOINT,
+        some_labels,
+        graph_name="http://whatever"
+    )
+
+    # will only get RDF for 3 IRIs
+    rdf = extract_labels(iris, SPARQL_ENDPOINT)
+    assert len(rdf) == 3
