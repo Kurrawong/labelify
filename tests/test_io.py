@@ -1,8 +1,8 @@
-from rdflib import Graph
-from labelify import find_missing_labels, extract_labels
-
-
 from pathlib import Path
+
+from rdflib import Graph
+
+from labelify import find_missing_labels, extract_labels
 
 
 def test_iri_list():

@@ -5,16 +5,15 @@ from argparse import ArgumentTypeError
 from getpass import getpass
 from pathlib import Path
 from typing import List, Optional
-from typing import Literal as TLiteral
 from urllib.error import URLError
 from urllib.parse import ParseResult, urlparse, urlunparse
 
-from kurra.utils import guess_format_from_data, load_graph
-from kurra.fuseki import query
-from rdflib import Graph, URIRef
-from rdflib.namespace import DCTERMS, RDF, RDFS, SDO, SKOS
 from SPARQLWrapper import JSONLD, TURTLE, SPARQLWrapper
 from SPARQLWrapper.SPARQLExceptions import EndPointNotFound, Unauthorized
+from kurra.sparql import sparql
+from kurra.utils import guess_format_from_data, load_graph
+from rdflib import Graph, URIRef
+from rdflib.namespace import DCTERMS, RDF, RDFS, SDO, SKOS
 
 from labelify.utils import get_namespace, list_of_predicates_to_alternates
 
@@ -92,7 +91,9 @@ def find_missing_labels(
 
     # ignore any node that is labelled in the context
     if context is not None:
-        if isinstance(context, ParseResult) or (isinstance(context, str) and context.startswith("http")):
+        if isinstance(context, ParseResult) or (
+            isinstance(context, str) and context.startswith("http")
+        ):
             if isinstance(context, ParseResult):
                 sparql_endpoint = context.geturl()
             else:
@@ -120,12 +121,24 @@ def find_missing_labels(
                     ?iri ?t ?label .
                 }
                 """.replace(
-                "XXXX", "".join(["<" + x.strip() + ">\n                        " for x in nodes_missing]).strip()
+                "XXXX",
+                "".join(
+                    [
+                        "<" + x.strip() + ">\n                        "
+                        for x in nodes_missing
+                    ]
+                ).strip(),
             )
-            r = query(sparql_endpoint, q, return_python=True, return_bindings_only=True)
+            r = sparql(
+                sparql_endpoint, q, return_python=True, return_bindings_only=True
+            )
             for row in r:
                 nodes_missing.remove(URIRef(row["iri"]["value"]))
-        elif isinstance(context, Graph) or isinstance(context, Path) or isinstance(context, str):
+        elif (
+            isinstance(context, Graph)
+            or isinstance(context, Path)
+            or isinstance(context, str)
+        ):
             if isinstance(context, Graph):
                 pass
             elif isinstance(context, Path) or isinstance(context, str):

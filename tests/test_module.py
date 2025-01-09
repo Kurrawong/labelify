@@ -1,10 +1,11 @@
-from labelify import find_missing_labels, extract_labels
-from rdflib import Graph, URIRef
-from rdflib.namespace import RDFS, SKOS
 import glob
 from pathlib import Path
-import urllib.request
-from kurra.fuseki import upload, query
+
+from kurra.db import upload
+from rdflib import Graph, URIRef
+from rdflib.namespace import RDFS, SKOS
+
+from labelify import find_missing_labels, extract_labels
 
 
 def test_iris_without_context():
@@ -78,15 +79,10 @@ def test_iris_with_context_sparql(fuseki_container):
     .
     """
 
-    upload(
-        SPARQL_ENDPOINT,
-        five_labels,
-        graph_name="http://whatever"
-    )
+    upload(SPARQL_ENDPOINT, five_labels, graph_name="http://whatever")
 
     missing2 = find_missing_labels(
-        Path(__file__).parent / "manifest.ttl",
-        context=SPARQL_ENDPOINT
+        Path(__file__).parent / "manifest.ttl", context=SPARQL_ENDPOINT
     )
 
     assert len(missing2) == 4
@@ -167,11 +163,7 @@ def test_extract_with_context_sparql_endpoint(fuseki_container):
     .    
     """
 
-    upload(
-        SPARQL_ENDPOINT,
-        some_labels,
-        graph_name="http://whatever"
-    )
+    upload(SPARQL_ENDPOINT, some_labels, graph_name="http://whatever")
 
     # will only get RDF for 3 IRIs
     rdf = extract_labels(iris, SPARQL_ENDPOINT)
