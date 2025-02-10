@@ -283,21 +283,26 @@ def extract_labels(
 
     # make the graph from the given source
     if (
-        isinstance(labels_source, str) and labels_source.startswith("http")
+            isinstance(labels_source, str) and labels_source.startswith("http")
     ) or isinstance(labels_source, ParseResult):
         return query_sparql_endpoint(labels_source, q)
 
     if isinstance(labels_source, Graph):
         g = labels_source
-    elif isinstance(labels_source, str):
-        g = Graph().parse(labels_source, guess_format_from_data(labels_source))
-    elif isinstance(labels_source, Path):
+    elif isinstance(labels_source, str) or isinstance(labels_source, Path):
+        try:
+            labels_source = Path(labels_source)
+        except:
+            pass
+
         if labels_source.is_file():
             g = Graph().parse(labels_source)
         elif labels_source.is_dir():
             g = Graph()
             for f in labels_source.glob("**/*"):
                 g.parse(f)
+        else:
+            g = Graph().parse(labels_source, guess_format_from_data(labels_source))
 
     # query the graph
     return_g = Graph()
@@ -394,14 +399,6 @@ def setup_cli_parser(args=None):
     )
 
     parser.add_argument(
-        "-n",
-        "--nodetype",
-        help="The type of node you want to check for labels. Select 'subject', 'predicate', 'object' or 'all'",
-        choices=["subjects", "predicates", "objects", "all"],
-        default="all",
-    )
-
-    parser.add_argument(
         "-e",
         "--evaluate",
         help="Evaluate nodes in the context graphs for labels",
@@ -455,12 +452,6 @@ def setup_cli_parser(args=None):
         dest="timeout",
         help="timeout in seconds",
         required=False,
-    )
-
-    parser.add_argument(
-        "--getlabels",
-        help="Gets labels for a given list of IRIs from RDF files in a given location",
-        type=str,
     )
 
     parser.add_argument(
