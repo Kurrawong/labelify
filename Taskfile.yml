@@ -1,0 +1,30 @@
+# https://taskfile.dev
+
+version: "3"
+
+env:
+  PYTHON_SRC: labelify
+  TESTS_DIR: tests
+
+tasks:
+  install:
+    cmds:
+      - uv sync
+
+  format:
+    desc: Format Python code.
+    cmds:
+      - uv run ruff format $PYTHON_SRC
+      - uv run ruff check --select I --fix $PYTHON_SRC
+      - uv run ruff format $TESTS_DIR
+      - uv run ruff check --select I --fix $TESTS_DIR
+
+  code:
+    desc: Alias of format.
+    cmds:
+      - task: format
+
+  test:
+    desc: Run tests
+    cmds:
+      - uv run pytest tests -rP

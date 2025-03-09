@@ -117,18 +117,23 @@ def find_missing_labels(
             """.replace(
             "XXXX",
             "".join(
-                [
-                    "<" + x.strip() + ">\n                        "
-                    for x in nodes_missing
-                ]
+                ["<" + x.strip() + ">\n                        " for x in nodes_missing]
             ).strip(),
         )
         if isinstance(context, Path):
-            r = query(load_graph(context), q, return_python=True, return_bindings_only=True)
+            r = query(
+                load_graph(context), q, return_python=True, return_bindings_only=True
+            )
         elif isinstance(context, Graph):
             r = query(context, q, return_python=True, return_bindings_only=True)
         else:  # SPARQL Endpoint
-            r = query(context, q, make_httpx_client(username, password), return_python=True, return_bindings_only=True)
+            r = query(
+                context,
+                q,
+                make_httpx_client(username, password),
+                return_python=True,
+                return_bindings_only=True,
+            )
 
         for row in r:
             nodes_missing.remove(URIRef(row["iri"]["value"]))
@@ -168,9 +173,7 @@ def get_triples_from_sparql_endpoint(args: argparse.Namespace) -> Graph:
         order by ?s
         limit {}
         offset {}
-        """.format(
-                batch_size, offset
-            )
+        """.format(batch_size, offset)
         )
         try:
             g_part = sparql.queryAndConvert()
@@ -195,7 +198,6 @@ def extract_labels(
     username: str = None,
     password: str = None,
 ) -> Graph:
-
     # make the query
     q = """
             PREFIX dcterms: <http://purl.org/dc/terms/>

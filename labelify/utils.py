@@ -1,9 +1,6 @@
-import pickle
-from pathlib import Path
 from urllib.parse import urlparse
 
-import httpx
-from rdflib import Graph, URIRef
+from rdflib import URIRef
 
 
 def list_of_predicates_to_alternates(list_of_predicates):

@@ -7,7 +7,7 @@ from kurra.db import upload
 from rdflib import Graph, URIRef
 from rdflib.namespace import RDFS, SKOS
 
-from labelify import find_missing_labels, extract_labels
+from labelify import extract_labels, find_missing_labels
 
 
 def test_iris_without_context():
@@ -101,8 +101,7 @@ def test_extract_labels(fuseki_container):
 
     assert len(labels_rdf) == 26
 
-    extra_labels = \
-        """
+    extra_labels = """
         PREFIX schema: <https://schema.org/>
         
         <http://purl.org/dc/terms/created> schema:name "created" .
