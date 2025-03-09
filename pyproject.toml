@@ -1,6 +1,6 @@
 [project]
 name = "labelify"
-version = "0.5.0"
+version = "0.5.1"
 description = "Analyse an RDF graph to find URI's without human readable labels."
 authors = [{ name = "Nicholas Car", email = "nick@kurrawong.ai" }]
 requires-python = "~=3.12"
