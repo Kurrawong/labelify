@@ -4,14 +4,14 @@ import sys
 from argparse import ArgumentTypeError
 from getpass import getpass
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 from urllib.error import URLError
 from urllib.parse import ParseResult, urlparse, urlunparse
 
-from SPARQLWrapper import JSONLD, TURTLE, SPARQLWrapper
+from SPARQLWrapper import JSONLD, SPARQLWrapper
 from SPARQLWrapper.SPARQLExceptions import EndPointNotFound, Unauthorized
-from kurra.sparql import sparql
-from kurra.utils import guess_format_from_data, load_graph
+from kurra.sparql import query
+from kurra.utils import load_graph, make_httpx_client
 from rdflib import Graph, URIRef
 from rdflib.namespace import DCTERMS, RDF, RDFS, SDO, SKOS
 
@@ -42,7 +42,7 @@ def call_method(o, name):
 
 def find_missing_labels(
     target: Graph | str | Path,
-    context: Path | ParseResult | Graph | str = None,
+    context: Path | Graph | str = None,
     labelling_predicates: [URIRef] = [
         DCTERMS.title,
         RDFS.label,
@@ -50,6 +50,8 @@ def find_missing_labels(
         SKOS.prefLabel,
     ],
     evaluate_context_nodes: bool = False,
+    username: str = None,
+    password: str = None,
 ) -> set[URIRef]:
     """Gets all the nodes missing labels
 
@@ -91,66 +93,45 @@ def find_missing_labels(
 
     # ignore any node that is labelled in the context
     if context is not None:
-        if isinstance(context, ParseResult) or (
-            isinstance(context, str) and context.startswith("http")
-        ):
-            if isinstance(context, ParseResult):
-                sparql_endpoint = context.geturl()
-            else:
-                sparql_endpoint = context
-
-            # make missing list into a query insert
-            q = """
-                PREFIX dcterms: <http://purl.org/dc/terms/>
-                PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-                PREFIX schema: <https://schema.org/>
-                PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-                
-                SELECT DISTINCT ?iri
-                WHERE {
-                    VALUES ?iri {
-                        XXXX
-                    }
-                    VALUES ?t {
-                        skos:prefLabel
-                        dcterms:title                        
-                        rdfs:label
-                        schema:name
-                    }
-                    
-                    ?iri ?t ?label .
+        # make missing list into a query insert
+        q = """
+            PREFIX dcterms: <http://purl.org/dc/terms/>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX schema: <https://schema.org/>
+            PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+            
+            SELECT DISTINCT ?iri
+            WHERE {
+                VALUES ?iri {
+                    XXXX
                 }
-                """.replace(
-                "XXXX",
-                "".join(
-                    [
-                        "<" + x.strip() + ">\n                        "
-                        for x in nodes_missing
-                    ]
-                ).strip(),
-            )
-            r = sparql(
-                sparql_endpoint, q, return_python=True, return_bindings_only=True
-            )
-            for row in r:
-                nodes_missing.remove(URIRef(row["iri"]["value"]))
-        elif (
-            isinstance(context, Graph)
-            or isinstance(context, Path)
-            or isinstance(context, str)
-        ):
-            if isinstance(context, Graph):
-                pass
-            elif isinstance(context, Path) or isinstance(context, str):
-                context = load_graph(context)
+                VALUES ?t {
+                    skos:prefLabel
+                    dcterms:title                        
+                    rdfs:label
+                    schema:name
+                }
+                
+                ?iri ?t ?label .
+            }
+            """.replace(
+            "XXXX",
+            "".join(
+                [
+                    "<" + x.strip() + ">\n                        "
+                    for x in nodes_missing
+                ]
+            ).strip(),
+        )
+        if isinstance(context, Path):
+            r = query(load_graph(context), q, return_python=True, return_bindings_only=True)
+        elif isinstance(context, Graph):
+            r = query(context, q, return_python=True, return_bindings_only=True)
+        else:  # SPARQL Endpoint
+            r = query(context, q, make_httpx_client(username, password), return_python=True, return_bindings_only=True)
 
-            still_missing = nodes_missing.copy()
-            for n in nodes_missing:
-                if context.value(
-                    n, list_of_predicates_to_alternates(labelling_predicates)
-                ):
-                    still_missing.remove(n)
-            nodes_missing = still_missing
+        for row in r:
+            nodes_missing.remove(URIRef(row["iri"]["value"]))
 
     return nodes_missing
 
@@ -210,28 +191,10 @@ def get_triples_from_sparql_endpoint(args: argparse.Namespace) -> Graph:
 
 def extract_labels(
     iris: [],
-    labels_source: Path | ParseResult | Graph | str,
-    timeout: Optional[int] = 20,
-    username: Optional[str] = None,
-    password: Optional[str] = None,
+    labels_source: Path | Graph | str,
+    username: str = None,
+    password: str = None,
 ) -> Graph:
-    def query_sparql_endpoint(sparql_endpoint: str | ParseResult, query: str):
-        if isinstance(sparql_endpoint, str):
-            sparql_endpoint = urlparse(sparql_endpoint)
-
-        sparql = SPARQLWrapper(sparql_endpoint.geturl())
-        sparql.setReturnFormat(TURTLE)
-        sparql.setTimeout(timeout)
-        if username and not password:
-            sparql.setCredentials(user=username, passwd=getpass("password:"))
-        elif username and password:
-            sparql.setCredentials(user=username, passwd=password)
-        sparql.setQuery(query)
-        try:
-            return Graph().parse(data=sparql.queryAndConvert())
-        except (URLError, Unauthorized, EndPointNotFound, TimeoutError) as e:
-            print(e)
-            exit(1)
 
     # make the query
     q = """
@@ -281,37 +244,13 @@ def extract_labels(
         "XXXX", "".join(["<" + x.strip() + ">\n                " for x in iris]).strip()
     )
 
-    # make the graph from the given source
-    if (
-            isinstance(labels_source, str) and labels_source.startswith("http")
-    ) or isinstance(labels_source, ParseResult):
-        return query_sparql_endpoint(labels_source, q)
+    if isinstance(labels_source, Path) or isinstance(labels_source, Graph):
+        r = query(labels_source, q)
+    else:  # SPARQL Endpoint
+        c = make_httpx_client(username, password)
+        r = query(labels_source, q, c)
 
-    if isinstance(labels_source, Graph):
-        g = labels_source
-    elif isinstance(labels_source, str) or isinstance(labels_source, Path):
-        try:
-            labels_source = Path(labels_source)
-        except:
-            pass
-
-        if labels_source.is_file():
-            g = Graph().parse(labels_source)
-        elif labels_source.is_dir():
-            g = Graph()
-            for f in labels_source.glob("**/*"):
-                g.parse(f)
-        else:
-            g = Graph().parse(labels_source, guess_format_from_data(labels_source))
-
-    # query the graph
-    return_g = Graph()
-    for r in g.query(q):
-        return_g.add(r)
-
-    return return_g
-
-    return return_g
+    return r
 
 
 def output_labels(iris: Path | List, labels_source: Path, dest: Path = None):

@@ -1,6 +1,8 @@
 import glob
 from pathlib import Path
 
+import httpx
+import kurra.db
 from kurra.db import upload
 from rdflib import Graph, URIRef
 from rdflib.namespace import RDFS, SKOS
@@ -12,7 +14,6 @@ def test_iris_without_context():
     g = Graph().parse("tests/one/data-access-rights.ttl")
 
     missing = find_missing_labels(g, None, [SKOS.prefLabel, RDFS.label])
-    print(missing)
     assert len(missing) == 23
 
 
@@ -22,7 +23,7 @@ def test_iris_with_context_folder():
     for c in glob.glob("tests/one/background/*.ttl"):
         cg.parse(c)
 
-    missing = find_missing_labels(g, cg, [SKOS.prefLabel, RDFS.label], "objects")
+    missing = find_missing_labels(g, cg, [SKOS.prefLabel, RDFS.label], True)
 
     assert len(missing) == 1
 
@@ -79,7 +80,7 @@ def test_iris_with_context_sparql(fuseki_container):
     .
     """
 
-    upload(SPARQL_ENDPOINT, five_labels, graph_name="http://whatever")
+    upload(SPARQL_ENDPOINT, five_labels, graph_id="http://whatever")
 
     missing2 = find_missing_labels(
         Path(__file__).parent / "manifest.ttl", context=SPARQL_ENDPOINT
@@ -88,7 +89,7 @@ def test_iris_with_context_sparql(fuseki_container):
     assert len(missing2) == 4
 
 
-def test_extract_labels():
+def test_extract_labels(fuseki_container):
     # generate an IRI list from an RDF file
     vocab_file = Path(Path(__file__).parent / "one/data-access-rights.ttl")
     iris = find_missing_labels(vocab_file)
@@ -99,6 +100,22 @@ def test_extract_labels():
     labels_rdf = extract_labels(iris, labels_source)
 
     assert len(labels_rdf) == 26
+
+    extra_labels = \
+        """
+        PREFIX schema: <https://schema.org/>
+        
+        <http://purl.org/dc/terms/created> schema:name "created" .
+        <http://purl.org/dc/terms/creator> schema:name "creator" .
+        <http://purl.org/dc/terms/provenance> schema:name "provenance" .
+        """
+
+    SPARQL_ENDPOINT = f"http://localhost:{fuseki_container.get_exposed_port(3030)}/ds"
+    kurra.db.clear_graph(SPARQL_ENDPOINT, "all", httpx.Client())
+    upload(SPARQL_ENDPOINT, extra_labels, graph_id="http://example.com")
+    labels_rdf = extract_labels(iris, SPARQL_ENDPOINT, "admin", "admin")
+
+    assert len(labels_rdf) == 3
 
 
 def test_extract_with_context_sparql_endpoint(fuseki_container):
@@ -163,7 +180,7 @@ def test_extract_with_context_sparql_endpoint(fuseki_container):
     .    
     """
 
-    upload(SPARQL_ENDPOINT, some_labels, graph_name="http://whatever")
+    upload(SPARQL_ENDPOINT, some_labels, graph_id="http://whatever")
 
     # will only get RDF for 3 IRIs
     rdf = extract_labels(iris, SPARQL_ENDPOINT)
