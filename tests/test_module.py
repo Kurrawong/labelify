@@ -3,7 +3,7 @@ from pathlib import Path
 
 import httpx
 import kurra.db
-from kurra.db import upload
+from kurra.db import upload, sparql
 from rdflib import Graph, URIRef
 from rdflib.namespace import RDFS, SKOS
 
@@ -184,3 +184,31 @@ def test_extract_with_context_sparql_endpoint(fuseki_container):
     # will only get RDF for 3 IRIs
     rdf = extract_labels(iris, SPARQL_ENDPOINT)
     assert len(rdf) == 3
+
+
+def test_find_missing_labels_sparql(fuseki_container):
+    SPARQL_ENDPOINT = f"http://localhost:{fuseki_container.get_exposed_port(3030)}/ds"
+
+    http_client = httpx.Client()
+
+    # add all missing labels to SPARQL Endpoint
+    q = """
+    PREFIX schema: <https://schema.org/>
+    
+    INSERT DATA {    
+        GRAPH <http://whatever> {
+            <https://prez.dev/ManifestResourceRoles/CatalogueData> schema:name "Catalogue Data" . 
+            <https://schema.org/name> schema:name "name" .
+            <http://www.w3.org/ns/dx/prof/hasArtifact> schema:name "has artifact" .
+            <https://prez.dev/Manifest> schema:name "Manifest" .
+            <http://www.w3.org/ns/dx/prof/hasRole> schema:name "has role" .
+            <https://prez.dev/ManifestResourceRoles/ResourceData> schema:name "Resource Data" .
+            <http://www.w3.org/ns/dx/prof/hasResource> schema:name "has resource" .
+            <https://prez.dev/ManifestResourceRoles/CatalogueAndResourceModel> schema:name "Catalogue And Resource Model" . 
+            # <https://schema.org/description> schema:name "description" .  
+        }
+    }
+    """
+    sparql(SPARQL_ENDPOINT, q, http_client=http_client)
+
+    assert len(list(find_missing_labels(Path(__file__).parent / "manifest.ttl", SPARQL_ENDPOINT, http_client=http_client))) == 1

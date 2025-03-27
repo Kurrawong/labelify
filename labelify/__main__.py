@@ -8,6 +8,7 @@ from typing import List
 from urllib.error import URLError
 from urllib.parse import ParseResult, urlparse, urlunparse
 
+import httpx
 from SPARQLWrapper import JSONLD, SPARQLWrapper
 from SPARQLWrapper.SPARQLExceptions import EndPointNotFound, Unauthorized
 from kurra.sparql import query
@@ -50,8 +51,7 @@ def find_missing_labels(
         SKOS.prefLabel,
     ],
     evaluate_context_nodes: bool = False,
-    username: str = None,
-    password: str = None,
+    http_client: httpx.Client = None,
 ) -> set[URIRef]:
     """Gets all the nodes missing labels
 
@@ -130,7 +130,7 @@ def find_missing_labels(
             r = query(
                 context,
                 q,
-                make_httpx_client(username, password),
+                http_client,
                 return_python=True,
                 return_bindings_only=True,
             )
@@ -195,8 +195,7 @@ def get_triples_from_sparql_endpoint(args: argparse.Namespace) -> Graph:
 def extract_labels(
     iris: [],
     labels_source: Path | Graph | str,
-    username: str = None,
-    password: str = None,
+    http_client: httpx.Client = None,
 ) -> Graph:
     # make the query
     q = """
@@ -249,8 +248,7 @@ def extract_labels(
     if isinstance(labels_source, Path) or isinstance(labels_source, Graph):
         r = query(labels_source, q)
     else:  # SPARQL Endpoint
-        c = make_httpx_client(username, password)
-        r = query(labels_source, q, c)
+        r = query(labels_source, q, http_client)
 
     return r
 
@@ -426,8 +424,6 @@ def cli(args=None):
             g.parse(file)
     else:
         g = Graph().parse(args.input)
-
-    cg = None
 
     if args.supress == "true":
         exit()
