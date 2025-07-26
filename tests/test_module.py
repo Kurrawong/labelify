@@ -112,7 +112,7 @@ def test_extract_labels(fuseki_container):
     SPARQL_ENDPOINT = f"http://localhost:{fuseki_container.get_exposed_port(3030)}/ds"
     kurra.db.clear_graph(SPARQL_ENDPOINT, "all", httpx.Client())
     upload(SPARQL_ENDPOINT, extra_labels, graph_id="http://example.com")
-    labels_rdf = extract_labels(iris, SPARQL_ENDPOINT, "admin", "admin")
+    labels_rdf = extract_labels(iris, SPARQL_ENDPOINT, httpx.Client(auth=("admin", "admin")))
 
     assert len(labels_rdf) == 3
 
@@ -191,6 +191,8 @@ def test_find_missing_labels_sparql(fuseki_container):
 
     http_client = httpx.Client()
 
+    sparql(SPARQL_ENDPOINT, "DROP ALL", http_client=http_client)
+
     # add all missing labels to SPARQL Endpoint
     q = """
     PREFIX schema: <https://schema.org/>
@@ -211,4 +213,6 @@ def test_find_missing_labels_sparql(fuseki_container):
     """
     sparql(SPARQL_ENDPOINT, q, http_client=http_client)
 
-    assert len(list(find_missing_labels(Path(__file__).parent / "manifest.ttl", SPARQL_ENDPOINT, http_client=http_client))) == 1
+    ml = find_missing_labels(Path(__file__).parent / "manifest.ttl", SPARQL_ENDPOINT, http_client=http_client)
+    print(ml)
+    assert len(list(ml)) == 1
