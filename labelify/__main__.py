@@ -138,8 +138,7 @@ def find_missing_labels(
         for row in r:
             nodes_missing.remove(URIRef(row["iri"]["value"]))
 
-    # return set(sorted(nodes_missing))
-    return nodes_missing
+    return set(sorted(nodes_missing))
 
 
 def get_triples_from_sparql_endpoint(args: argparse.Namespace) -> Graph:
