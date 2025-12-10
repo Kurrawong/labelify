@@ -4,7 +4,7 @@ labelify is a Python module and command line utility that identifies unlabelled 
 extract labels for them from external resources. 
 
 If you would like to use the labelify tool directly, we provide an online GUI for it 
-[here](https://tools.dev.kurrawong.ai/). 
+[here](https://tools.kurrawong.ai/tools/labelify). 
 
 ## Installation
 
