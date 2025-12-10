@@ -10,14 +10,17 @@ If you would like to use the labelify tool directly, we provide an online GUI fo
 
 ### Command line use
 
-Clone the labelify repository:
+Try installing it from PyPI:
+
+    uv add labelify
+
+Or clone the labelify repository:
 
     git clone https://github.com/Kurrawong/labelify somewhere
 
-Then, install it using Python's [Poetry package manager](https://python-poetry.org/) from within the cloned repository's
-root folder:
+Then, install it using uv:
 
-    poetry install
+    uv tool install labelify
 
 If you don't install it this way, you can still use it as a Command Line Interface by running it as a Python script. 
 From within the cloned repository's root directory:
@@ -28,19 +31,7 @@ From within the cloned repository's root directory:
 
 ### Pyton library
 
-labelify is on PyPI at https://pypi.org/project/labelify/ so:
-
-    pip install labelify
-
-or 
-
-    poetry add labelify
-
-will install it.
-
-To install from it's version control repo, for the latest unstable release:
-
-    pip install git+https://github.com/Kurrawong/labelify
+labelify is on PyPI at https://pypi.org/project/labelify/.
 
 ## Use
 
@@ -164,20 +155,19 @@ lbls = extract_labels(iris, Path("tests/one/background/"))
 
 Clone the repository and install the dependencies:
 
-*labelify uses [Poetry](https://python-poetry.org/) to manage its dependencies.*
+*labelify uses [uv](https://github.com/astral-sh/uv) to manage its dependencies.*
 
-    git clone git@github.com:Kurrawong/labelify.git
-    cd labelify
-    poetry install
+    uv tool install labelify
 
-You can then use labelify from the command line
-
-    poetry shell
-    python labelify/ ...
+You can then use labelify from the command line.
 
 ### Running tests
 
-    poetry run pytest
+    uv run pytest
+
+or 
+
+    task test
 
 Several of the tests require a Fuseki triplestore instance to be available, so you need **Docker** running as the tests 
 will attempt to use [testcontainers](https://testcontainers.com/guides/getting-started-with-testcontainers-for-python/) 
@@ -185,9 +175,7 @@ to create throwaway containers for this purpose.
 
 ### Formatting the codebase
 
-    poetry run black . 
-
-    poetry run ruff check --fix labelify/
+    task format
 
 ## License
 

@@ -9,12 +9,12 @@ from urllib.error import URLError
 from urllib.parse import ParseResult, urlparse, urlunparse
 
 import httpx
-from SPARQLWrapper import JSONLD, SPARQLWrapper
-from SPARQLWrapper.SPARQLExceptions import EndPointNotFound, Unauthorized
 from kurra.sparql import query
 from kurra.utils import load_graph, make_httpx_client
 from rdflib import Graph, URIRef
 from rdflib.namespace import DCTERMS, RDF, RDFS, SDO, SKOS
+from SPARQLWrapper import JSONLD, SPARQLWrapper
+from SPARQLWrapper.SPARQLExceptions import EndPointNotFound, Unauthorized
 
 from labelify.utils import get_namespace, list_of_predicates_to_alternates
 
@@ -120,23 +120,16 @@ def find_missing_labels(
                 ["<" + x.strip() + ">\n                        " for x in nodes_missing]
             ).strip(),
         )
-        if isinstance(context, Path):
-            r = query(
-                load_graph(context), q, return_python=True, return_bindings_only=True
-            )
-        elif isinstance(context, Graph):
-            r = query(context, q, return_python=True, return_bindings_only=True)
-        else:  # SPARQL Endpoint
-            r = query(
-                context,
-                q,
-                http_client,
-                return_python=True,
-                return_bindings_only=True,
-            )
+        r = query(
+            context,
+            q,
+            http_client=http_client,
+            return_format="python",
+            return_bindings_only=True,
+        )
 
         for row in r:
-            nodes_missing.remove(URIRef(row["iri"]["value"]))
+            nodes_missing.remove(URIRef(row["iri"]) if isinstance(row["iri"], str) else URIRef(row["iri"]["value"]))
 
     return set(sorted(nodes_missing))
 
@@ -245,12 +238,7 @@ def extract_labels(
         "XXXX", "".join(["<" + x.strip() + ">\n                " for x in iris]).strip()
     )
 
-    if isinstance(labels_source, Path) or isinstance(labels_source, Graph):
-        r = query(labels_source, q)
-    else:  # SPARQL Endpoint
-        r = query(labels_source, q, http_client)
-
-    return r
+    return query(labels_source, q, http_client=http_client, return_format="python")
 
 
 def output_labels(iris: Path | List, labels_source: Path, dest: Path = None):
