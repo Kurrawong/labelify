@@ -129,7 +129,11 @@ def find_missing_labels(
         )
 
         for row in r:
-            nodes_missing.remove(URIRef(row["iri"]) if isinstance(row["iri"], str) else URIRef(row["iri"]["value"]))
+            nodes_missing.remove(
+                URIRef(row["iri"])
+                if isinstance(row["iri"], str)
+                else URIRef(row["iri"]["value"])
+            )
 
     return set(sorted(nodes_missing))
 

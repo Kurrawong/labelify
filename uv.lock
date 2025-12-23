@@ -181,7 +181,7 @@ wheels = [
 
 [[package]]
 name = "kurra"
-version = "2.0.1"
+version = "2.0.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
@@ -190,14 +190,14 @@ dependencies = [
     { name = "rich" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c7/51/320b6fea5fe3894631fc683e452a6ca4ee17df051a853558ee0e0ae8d41d/kurra-2.0.1.tar.gz", hash = "sha256:f2d3283e305357d1388c78bdbc20fe49e305398b1f5bfc28aaf14a56528401e5", size = 112968, upload-time = "2025-12-10T10:38:53.37Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a4/f0/0ee0a034f0a1298a1285bfd9a075039da5c3fdce0e4c491d66e5ad5d2a1f/kurra-2.0.5.tar.gz", hash = "sha256:7c1eeed55cdc42287b219156f7d17202fe640b079df5215ee8ae43d780c688aa", size = 117296, upload-time = "2025-12-23T08:08:49.207Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9b/6f/150d7b8ac50e66dc16f02d8294a142215393511c91973c31ef89a2009783/kurra-2.0.1-py3-none-any.whl", hash = "sha256:7543c157c1cd6ede428adb2c865ad6774a4830dda4da8c193e1eec343027c19e", size = 25281, upload-time = "2025-12-10T10:38:51.782Z" },
+    { url = "https://files.pythonhosted.org/packages/a6/86/8c1bf8baf6e889104a9dc693bea39d9f372c7ed0a60cff68279062100eb4/kurra-2.0.5-py3-none-any.whl", hash = "sha256:fe13f254d8f346c126f846128753519041cc4766d72a32fb2495e2ed49315278", size = 26597, upload-time = "2025-12-23T08:08:46.255Z" },
 ]
 
 [[package]]
 name = "labelify"
-version = "0.5.4"
+version = "0.6.0"
 source = { editable = "." }
 dependencies = [
     { name = "html5rdf" },
@@ -216,7 +216,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "html5rdf", specifier = ">=1.2.1,<2" },
-    { name = "kurra", specifier = ">=2.0.1" },
+    { name = "kurra", specifier = ">=2.0.5" },
     { name = "sparqlwrapper", specifier = ">=2.0.0,<3" },
 ]
 

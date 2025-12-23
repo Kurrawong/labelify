@@ -1,6 +1,6 @@
 [project]
 name = "labelify"
-version = "0.6.0"
+version = "0.6.1"
 description = "Analyse an RDF graph to find URI's without human readable labels."
 authors = [{ name = "Nicholas Car", email = "nick@kurrawong.ai" }]
 requires-python = ">=3.12"
@@ -9,7 +9,7 @@ license = "BSD-3-Clause"
 dependencies = [
     "sparqlwrapper>=2.0.0,<3",
     "html5rdf>=1.2.1,<2",
-    "kurra>=2.0.1",
+    "kurra>=2.0.5",
 ]
 
 [project.scripts]
