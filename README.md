@@ -1,5 +1,11 @@
 # labelify 
 
+> [!WARNING]
+> All labelify functionality has been absorbed into [kurra](https://pypi.org/project/kurra/), the more general-purpose RDF management tool
+> 
+> Please use kurra as labelify will no longer be maintained and will eventually be removed.
+
+
 labelify is a Python module and command line utility that identifies unlabelled resources in RDF graphs and can 
 extract labels for them from external resources. 
 
